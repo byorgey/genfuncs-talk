@@ -1,0 +1,11 @@
+*Combinatorial structures* such as lists, trees, graphs, and
+permutations show up all over the place---in computer science and
+math, but also in physics, chemistry, biology, and many other areas.
+In this talk, I will explain a systematic way to describe and classify
+such combinatorial structures, with surprising and beautiful
+connections to certain types of infinite polynomials known as
+*generating functions*.  I will then show how we can generalize these
+polynomials over arbitrary *semirings* in order to compute answers to
+questions of interest about combinatorial structures.  Everything will
+be explained starting from first principles---no particular background
+in combinatorics or algebra will be necessary to follow the talk.
