@@ -114,6 +114,9 @@ XXX picture
 
 \begin{center}
   Think ``data structure, without any data''.
+
+  Set of shapes.  
+  Set of shapes sorted out by size.  Picture --- buckets of shapes
 \end{center}
 \end{frame}
 
@@ -126,7 +129,7 @@ XXX picture
 \begin{frame}{Questions}
   Given a particular class of combinatorial structures, we can ask:
   \begin{itemize}
-  \item How many are there?
+  \item How many are there (of a given size)?
   \item How many with some property $P$?
   \item Can we list them all?
   \item Can we generate them at random?
@@ -138,7 +141,119 @@ XXX picture
 \label{sec:taming}
 
 \begin{frame}{The Algebra of Things}
+A language for describing (some) combinatorial structures.
 
+XXX pictures of trees, list, perms with their algebraic expression
+next to them
+\end{frame}
+
+\begin{frame}{Combinatorial sum}
+Disjoint union.
+
+Throw all the shapes together.  Note size stays the same.
+\end{frame}
+
+\begin{frame}{Zero}
+  empty set.  identity for sum.
+\end{frame}
+
+\begin{frame}{Combinatorial product}
+  Pairing. $size(s,t) = size(s) + size(t)$.
+\end{frame}
+
+\begin{frame}{Unit}
+  A set with a single structure.  $size(BOX) = 0$.
+\end{frame}
+
+\begin{frame}{Singleton}
+  Similar to unit, but with size 1.
+\end{frame}
+
+\begin{frame}{Examples}
+
+\end{frame}
+
+\begin{frame}{Composition!}
+
+\end{frame}
+
+\begin{frame}{Other things}
+  
+\end{frame}
+
+\section{Part 3: Generating Functions}
+\label{sec:gen-funcs}
+
+\begin{frame}{Generating functions}
+  ``A generating function is a clothesline on which we hang up a
+  sequence of numbers for display.''  --- Herbert Wilf
+
+\[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+\end{frame}
+
+\begin{frame}{GFs for combinatorial structures}
+   \[ F(x) = \sum_{n \geq 0} |F_n| x^n = |F_0| + |F_1|x + |F_2|x^2 + \dots \]
+\end{frame}
+
+\begin{frame}{Examples}
+  X(x) = x
+  0(x) = 0
+  1(x) = 1
+  L(x) = 1 + x + x^2 + x^3 + \dots
+\end{frame}
+
+\begin{frame}{Sum}
+  \[ |(F+G)_n| = |F_n| + |G_n| \]
+
+  so
+
+  \[ (F+G)(x) = F(x) + G(x) \]
+\end{frame}
+
+\begin{frame}{Product}
+  \[ |(FG)_n| = \sum_{0 \leq k \leq n} |F_k| |G_{n-k}| \]
+
+  so
+
+  \[ (FG)(x) = F(x) G(x) \]
+
+  XXX add some pictures
+\end{frame}
+
+\begin{frame}{Example}
+  \[ T = 1 + X \cdot T \cdot T \]
+
+  so etc. XXX
+\end{frame}
+
+\section{Part 4: Semirings}
+\label{sec:semirings}
+
+\begin{frame}{Wilf again}
+  ``A generating function is a clothesline on which we hang up a
+  sequence of numbers for display.''
+
+  XXX strike out ``numbers'', replace with ``stuff''?
+\end{frame}
+
+\begin{frame}{Semirings}
+  A \emph{semiring} is:
+  \begin{itemize}
+  \item A set $S$
+  \item A binary operation $+$, with identity $0 \in S$
+  \item A binary operation $\cdot$, with identity $1 \in S$
+  \item (\dots and a few other laws)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Examples}
+  You already know some examples!
+
+  XXX examples
+\end{frame}
+
+\begin{frame}
+  XXX generalize
 \end{frame}
 
 \end{document}
