@@ -2,7 +2,7 @@
 
 module Structures where
 
-import           Diagrams.Backend.Cairo
+import           Diagrams.Backend.SVG
 import           Diagrams.Prelude
 import           Diagrams.TwoD.Layout.Tree
 
@@ -15,7 +15,7 @@ import           Physics.ForceLayout
 import           Text.Parsec
 import           Text.Parsec.String
 
-type DC = Diagram Cairo R2
+type DC = Diagram SVG R2
 
 dot :: DC
 dot = circle 1 # fc blue
@@ -73,3 +73,25 @@ cyc n
     ]
   where
     r = 4* fromIntegral n / tau
+
+data BucketOpts
+  = BucketOpts
+  { numBuckets    :: Int
+  , showEllipses  :: Bool
+  , bucketSize    :: Double
+  , expandBuckets :: Bool
+  }
+
+instance Default BucketOpts where
+  def = BucketOpts
+    { numBuckets        = 8
+    , showEllipses      = True
+    , bucketSize        = 1
+    , expandBuckets     = False
+    }
+
+bucketed' :: BucketOpts -> [[DC]] -> DC
+bucketed' opts buckets = undefined
+
+bucketed :: [[DC]] -> DC
+bucketed = bucketed' def
