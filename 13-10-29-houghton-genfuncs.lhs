@@ -109,8 +109,11 @@
 \label{sec:zoo}
 
 \begin{frame}[fragile]{Combinatorial structures}
-
 Informally: ``dots arranged in some shape''.
+
+%% XX if time, make variant pictures to go with words like "can
+%% generalize this... different color dots, labels instead of dots,
+%% ..."
 
 \bigskip
 \begin{center}
@@ -124,10 +127,109 @@ Informally: ``dots arranged in some shape''.
   \end{diagram}
 \end{center}
 
-\begin{frame}[fragile]{Structures, by size}
-``size'' $\approx$ ``number of dots''.
 \end{frame}
 
+\begin{frame}[fragile]{Structures, by size}
+\begin{center}
+\begin{diagram}[width=300]
+import Structures
+import Control.Lens ((&), (.~))
+
+dia = bucketed
+      (map (map (pad 1.3 . centerXY . binTree)) allBinTrees
+        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.09])
+    # centerXY # pad 1.1
+\end{diagram}
+
+\bigskip
+
+``size'' $\approx$ ``number of dots''.
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Examples}
+\begin{center}
+\begin{diagram}[width = 300]
+import Structures
+
+dia = bucketed ([[], [], [list 2]] ++ repeat [])
+    # centerXY # pad 1.1
+\end{diagram}
+
+\bigskip
+
+Ordered pairs
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Examples}
+\begin{center}
+\begin{diagram}[width = 300]
+import Structures
+
+dia = bucketed (map (:[]) . zipWith scale ([1,1,1,0.6] ++ repeat 0.4) . map list $ [0..])
+    # centerXY # pad 1.1
+\end{diagram}
+%$
+
+\bigskip
+
+Lists
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Examples}
+\begin{center}
+\begin{diagram}[width=300]
+import Structures
+import Control.Lens ((&), (.~))
+
+dia = bucketed
+      (map (map (pad 1.3 . centerXY . binTree)) allBinTrees
+        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.09])
+    # centerXY # pad 1.1
+\end{diagram}
+
+\bigskip
+
+Binary trees
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Examples}
+\begin{center}
+\begin{diagram}[width=300]
+import Structures
+import Control.Lens ((&), (.~))
+
+dia = bucketed (map (:[]) . map cyc $ [0..])
+    # centerXY # pad 1.1
+\end{diagram}
+%$
+
+\bigskip
+
+Cycles
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Examples}
+\begin{center}
+\begin{diagram}[width=300]
+import Structures
+import Control.Lens ((&), (.~))
+
+dia = bucketed (map (map tree) allTrees 
+                # zipWith scale [1,1,1,0.7,0.4,0.2]
+               )
+    # centerXY # pad 1.1
+\end{diagram}
+%$
+
+\bigskip
+
+$n$-ary trees
+\end{center}
 \end{frame}
 
 \begin{frame}[fragile]{Examples}

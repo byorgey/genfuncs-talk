@@ -1,27 +1,31 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TemplateHaskell           #-}
 
 module Structures where
 
 import           Diagrams.Backend.Postscript
 import           Diagrams.Prelude
 import           Diagrams.TwoD.Layout.Tree
+import           Graphics.SVGFonts
 
-import           Control.Arrow             (second)
-import           Control.Lens              ((^.))
+import           Control.Arrow               (second)
+import           Control.Lens                (makeLenses, (^.))
 import           Data.Default.Class
-import           Data.List                 (nub)
-import qualified Data.Map                  as M
+import           Data.List                   (genericLength, mapAccumL, nub)
+import qualified Data.Map                    as M
+import           Data.Maybe                  (fromMaybe)
 import           Data.Tree
 import           Physics.ForceLayout
-import           Text.Parsec
-import           Text.Parsec.String
+import           Text.Parsec                 (between, char, many, runParser)
+import           Text.Parsec.String          (Parser)
 
 type DC = Diagram Postscript R2
 
 dot :: DC
-dot = circle 1 # fc blue
+dot = circle 1 # fc blue # lw 0
 
 list :: Int -> DC
+list 0 = square 1 # fc black
 list n = dots <> rule
   where
     dots = hcat' with {sep = 2} (replicate n dot)
@@ -31,7 +35,7 @@ translateXTo ref mv = alignL mv # maybe id translateX (fst <$> extentX ref)
 
 tree :: Tree () -> DC
 tree =
-  renderTree (const dot) (~~) . symmLayout' with { slHSep = 4, slVSep = 7 }
+  renderTree (const dot) (~~) . symmLayout' with { slHSep = 4, slVSep = 4 }
 
 treeParser :: Parser (Tree ())
 treeParser = Node () <$> between (char '(') (char ')') (many treeParser)
@@ -67,6 +71,8 @@ drawEnsemble es = applyAll (map drawEdge es) . mconcat . map drawPt . (map . sec
     drawEdge (v1,v2) = withNames [v1,v2] $ \[s1,s2] -> beneath (location s1 ~~ location s2)
 
 cyc :: Int -> DC
+cyc 0 = mempty
+cyc 1 = dot
 cyc n
   = mconcat
     [ position (zip (polygon with { polyType = PolyRegular n r }) (repeat dot))
@@ -75,24 +81,84 @@ cyc n
   where
     r = 4* fromIntegral n / tau
 
+binTree :: BTree () -> DC
+binTree Empty = square 1 # fc black
+binTree t = fromMaybe mempty . fmap (renderTree (const dot) (~~)) . symmLayoutBin' with { slHSep = 4, slVSep = 4 } $ t
+
+allBinTrees :: [[BTree ()]]
+allBinTrees = map binTreesK [0..]
+  where
+    binTreesK 0 = [Empty]
+    binTreesK n = [ BNode () t1 t2 | k <- [(n-1), (n-2) .. 0], t1 <- binTreesK k, t2 <- binTreesK (n - 1 - k)]
+
+allTrees :: [[Tree ()]]
+allTrees = map treesK [0..]
+  where
+    treesK 0 = []
+    treesK n = [ Node () ts
+               | part <- oPartitions (n-1)
+               , ts <- mapM treesK part
+               ]
+
+oPartitions 0 = [[]]
+oPartitions n | n < 0 = []
+oPartitions n = concat [ map (k:) (oPartitions (n-k)) | k <- [n, n-1 .. 1] ]
+
+------------------------------------------------------------
+-- Bucketing
+------------------------------------------------------------
+
 data BucketOpts
   = BucketOpts
-  { numBuckets    :: Int
-  , showEllipses  :: Bool
-  , bucketSize    :: Double
-  , expandBuckets :: Bool
+  { _numBuckets    :: Int
+  , _showEllipses  :: Bool
+  , _bucketSize    :: Double
+  , _expandBuckets :: Bool
   }
+
+$(makeLenses ''BucketOpts)
 
 instance Default BucketOpts where
   def = BucketOpts
-    { numBuckets        = 8
-    , showEllipses      = True
-    , bucketSize        = 1
-    , expandBuckets     = False
+    { _numBuckets        = 6
+    , _showEllipses      = True
+    , _bucketSize        = 10
+    , _expandBuckets     = False
     }
 
 bucketed' :: BucketOpts -> [[DC]] -> DC
-bucketed' opts buckets = undefined
+bucketed' opts buckets
+  = (if opts ^. showEllipses then (||| ellipses) else id)
+  . hcat' with {sep = 1}
+  . take (opts ^. numBuckets)
+  . zipWith (makeBucket opts) [0..]
+  $ buckets
+  where
+    ellipses = strutX 1 ||| hcat' with {sep = 1} (replicate 3 (circle 0.5 # fc black))
+
+makeBucket :: BucketOpts -> Int -> [DC] -> DC
+makeBucket opts n elts
+    = vcat' with {sep = 1}
+      [ bucketDia <> (spaceOut . layout $ elts)
+      , text' 5 (show n)
+      ]
+  where
+    bucketDia :: DC
+    bucketDia = roundedRect s s (s / 8)
+    s = opts ^. bucketSize
+    layout [] = []
+    layout es = map snd this : layout (map snd rest)
+      where
+        (this, rest) = span ((<s) . fst) esWeighted
+        esWeighted :: [(Double, DC)]
+        esWeighted = snd $ mapAccumL (\w e -> let w' = w + width e in (w', (w', e))) 0 es
+    spaceOut es = centerY . spread unit_Y s $ map (centerX . spread unitX s) es
+      where
+        spread :: R2 -> Double -> [DC] -> DC
+        spread v total es = cat' v with {sep = (total - sum (map (extent v) es)) / (genericLength es + 1)} es
+        extent v d
+          = maybe 0 (negate . uncurry (-))
+          $ (\f -> (-f (negateV v), f v)) <$> (appEnvelope . getEnvelope $ d)
 
 bucketed :: [[DC]] -> DC
 bucketed = bucketed' def
@@ -107,3 +173,7 @@ theList = list 5 # centerXY
 
 theCycles = hcat' with {sep = 2} [cyc 5, cyc 7] # centerXY # rotateBy (1/20)
 
+------------------------------------------------------------
+-- misc
+
+text' d t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False d d ) # fc black # lw 0
