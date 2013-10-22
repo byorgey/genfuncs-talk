@@ -11,6 +11,9 @@ dist_*
 history
 TAGS
 .diagrams-cache
+.diagrams_cache
+diagrams/*
+diagrams/*
 .shake.database
 *.aux
 *.log
