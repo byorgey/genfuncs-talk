@@ -5,7 +5,7 @@
 %include lhs2TeX-extra.fmt
 
 \usepackage{brent}
-\usepackage[outputdir=diagrams]{diagrams-latex}
+\usepackage[backend=ps,extension=eps,outputdir=diagrams]{diagrams-latex}
 \graphicspath{{images/}}
 
 \renewcommand{\onelinecomment}{\quad--- \itshape}
@@ -82,7 +82,7 @@
 
 \renewcommand{\emph}{\textbf}
 
-\title{Title!}
+\title{Trees and Things \\ (with Semirings!)}
 \date{Houghton College \\ October 29, 2013}
 \author{Brent Yorgey}
 \titlegraphic{}  % \includegraphics[width=2in]{foo}
@@ -108,16 +108,26 @@
 \section{Part 1: The Combinatorial Zoo}
 \label{sec:zoo}
 
-\begin{frame}{``Combinatorial structure''?}
+\begin{frame}[fragile]{Combinatorial structures}
 
-XXX picture
+Informally: ``dots arranged in some shape''.
 
+\bigskip
 \begin{center}
-  Think ``data structure, without any data''.
+  \begin{diagram}[width=200]
+    import Structures
 
-  Set of shapes.  
-  Set of shapes sorted out by size.  Picture --- buckets of shapes
+    dia = theGraph
+      # rotateBy (1/4) # sized (Width 4)
+      # centerXY # pad 1.1
+    -- XXX use some different structure?
+  \end{diagram}
 \end{center}
+
+\begin{frame}[fragile]{Structures, by size}
+``size'' $\approx$ ``number of dots''.
+\end{frame}
+
 \end{frame}
 
 \begin{frame}[fragile]{Examples}
@@ -133,7 +143,7 @@ XXX picture
   \item How many with some property $P$?
   \item Can we list them all?
   \item Can we generate them at random?
-  \item \dots
+  \item $\dots$
   \end{itemize}
 \end{frame}
 
@@ -178,7 +188,7 @@ Throw all the shapes together.  Note size stays the same.
 \end{frame}
 
 \begin{frame}{Other things}
-  
+
 \end{frame}
 
 \section{Part 3: Generating Functions}
@@ -196,10 +206,10 @@ Throw all the shapes together.  Note size stays the same.
 \end{frame}
 
 \begin{frame}{Examples}
-  X(x) = x
-  0(x) = 0
-  1(x) = 1
-  L(x) = 1 + x + x^2 + x^3 + \dots
+  $X(x) = x$
+  $0(x) = 0$
+  $1(x) = 1$
+  $L(x) = 1 + x + x^2 + x^3 + \dots$
 \end{frame}
 
 \begin{frame}{Sum}
@@ -242,7 +252,7 @@ Throw all the shapes together.  Note size stays the same.
   \item A set $S$
   \item A binary operation $+$, with identity $0 \in S$
   \item A binary operation $\cdot$, with identity $1 \in S$
-  \item (\dots and a few other laws)
+  \item ($\dots$ and a few other laws)
   \end{itemize}
 \end{frame}
 
