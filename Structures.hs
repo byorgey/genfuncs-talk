@@ -83,7 +83,7 @@ cyc n
 
 binTree :: BTree () -> DC
 binTree Empty = square 1 # fc black
-binTree t = fromMaybe mempty . fmap (renderTree (const dot) (~~)) . symmLayoutBin' with { slHSep = 4, slVSep = 4 } $ t
+binTree t = fromMaybe mempty . fmap (renderTree (const dot) (~~)) . symmLayoutBin' with { slHSep = 5, slVSep = 4 } $ t
 
 allBinTrees :: [[BTree ()]]
 allBinTrees = map binTreesK [0..]
@@ -107,6 +107,8 @@ oPartitions n = concat [ map (k:) (oPartitions (n-k)) | k <- [n, n-1 .. 1] ]
 ------------------------------------------------------------
 -- Bucketing
 ------------------------------------------------------------
+
+-- XXX make bucket lines thicker
 
 data BucketOpts
   = BucketOpts
@@ -139,26 +141,33 @@ bucketed' opts buckets
 makeBucket :: BucketOpts -> Int -> [DC] -> DC
 makeBucket opts n elts
     = vcat' with {sep = 1}
-      [ bucketDia <> (spaceOut . layout $ elts)
+      [ bucketDia <> wrapLayout s s elts
       , text' 5 (show n)
       ]
   where
     bucketDia :: DC
     bucketDia = roundedRect s s (s / 8)
     s = opts ^. bucketSize
-    layout [] = []
-    layout es = map snd this : layout (map snd rest)
-      where
-        (this, rest) = span ((<s) . fst) esWeighted
-        esWeighted :: [(Double, DC)]
-        esWeighted = snd $ mapAccumL (\w e -> let w' = w + width e in (w', (w', e))) 0 es
-    spaceOut es = centerY . spread unit_Y s $ map (centerX . spread unitX s) es
-      where
-        spread :: R2 -> Double -> [DC] -> DC
-        spread v total es = cat' v with {sep = (total - sum (map (extent v) es)) / (genericLength es + 1)} es
-        extent v d
-          = maybe 0 (negate . uncurry (-))
-          $ (\f -> (-f (negateV v), f v)) <$> (appEnvelope . getEnvelope $ d)
+
+wrapLayout :: Double -> Double -> [DC] -> DC
+wrapLayout w h = layoutGrid w h . wrap w h
+
+wrap :: Double -> Double -> [DC] -> [[DC]]
+wrap w h [] = []
+wrap w h es = map snd this : wrap w h (map snd rest)
+  where
+    (this, rest) = span ((<w) . fst) esWeighted
+    esWeighted :: [(Double, DC)]
+    esWeighted = snd $ mapAccumL (\w e -> let w' = w + width e in (w', (w', e))) 0 es
+
+layoutGrid :: Double -> Double -> [[DC]] -> DC
+layoutGrid w h es = centerY . spread unit_Y h $ map (centerX . spread unitX w) es
+  where
+    spread :: R2 -> Double -> [DC] -> DC
+    spread v total es = cat' v with {sep = (total - sum (map (extent v) es)) / (genericLength es + 1)} es
+    extent v d
+      = maybe 0 (negate . uncurry (-))
+      $ (\f -> (-f (negateV v), f v)) <$> (appEnvelope . getEnvelope $ d)
 
 bucketed :: [[DC]] -> DC
 bucketed = bucketed' def

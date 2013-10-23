@@ -129,7 +129,22 @@ Informally: ``dots arranged in some shape''.
 
 \end{frame}
 
-\begin{frame}[fragile]{Structures, by size}
+\begin{frame}[fragile]{Species}
+\begin{center}
+A ``species'' is a \emph{family of related structures}.
+
+\begin{diagram}[width=200]
+import Structures
+import Diagrams.TwoD.Layout.CirclePacking
+
+dia = (renderCirclePacking (approxRadius 8) . map (pad 1.5 . centerXY . binTree) . concat . take 7 $ allBinTrees)
+    # centerXY # pad 1.1
+\end{diagram}
+%$
+\end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Species, by size}
 \begin{center}
 \begin{diagram}[width=300]
 import Structures
@@ -137,13 +152,13 @@ import Control.Lens ((&), (.~))
 
 dia = bucketed
       (map (map (pad 1.3 . centerXY . binTree)) allBinTrees
-        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.09])
+        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.08])
     # centerXY # pad 1.1
 \end{diagram}
 
 \bigskip
 
-``size'' $\approx$ ``number of dots''.
+``size'' $=$ number of dots.
 \end{center}
 \end{frame}
 
@@ -158,7 +173,7 @@ dia = bucketed ([[], [], [list 2]] ++ repeat [])
 
 \bigskip
 
-Ordered pairs
+Pairs
 \end{center}
 \end{frame}
 
@@ -186,7 +201,7 @@ import Control.Lens ((&), (.~))
 
 dia = bucketed
       (map (map (pad 1.3 . centerXY . binTree)) allBinTrees
-        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.09])
+        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.08])
     # centerXY # pad 1.1
 \end{diagram}
 
@@ -232,20 +247,16 @@ $n$-ary trees
 \end{center}
 \end{frame}
 
-\begin{frame}[fragile]{Examples}
-  Ordered pairs, unordered pairs, lists, binary trees, cycles, bags,
-  n-ary trees, octopi, permutations, functions, graphs (each on a
-  separate slide)
-\end{frame}
+%% XXX add other examples?  Organic molecules? etc?
 
 \begin{frame}{Questions}
-  Given a particular class of combinatorial structures, we can ask:
+  Given a particular family of structures (species), we can ask:
   \begin{itemize}
   \item How many are there (of a given size)?
   \item How many with some property $P$?
   \item Can we list them all?
   \item Can we generate them at random?
-  \item $\dots$
+  \item $\dots$?
   \end{itemize}
 \end{frame}
 
