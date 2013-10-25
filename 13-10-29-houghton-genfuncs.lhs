@@ -97,14 +97,71 @@
 %   \hfill \includegraphics[width=0.5in]{plclub}
 \end{frame}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{Trees and Things \\ \sout{(with Semirings!)}}
 
-\begin{frame}[fragile]{Overview}
-  XXX
+\begin{frame}[fragile]
+  \titlepage
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Trees}
+  \begin{center}
+    \includegraphics[width=3in]{tree.jpg}
+
+  This is a tree.
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Trees}
+  \begin{center}
+    \begin{diagram}[height=150]
+      import Structures
+
+      dia = binTree (parseBTree "((()())(((()())(()()))(()())))")
+        # centerXY # pad 1.1
+    \end{diagram}
+
+    This is \dots also a tree.
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Trees}
+A tree is either\dots
+
+\begin{minipage}{0.4\linewidth}
+  \begin{center}
+    \begin{diagram}[width=50]
+      import Structures
+      dia = nil
+    \end{diagram}
+
+    empty,
+  \end{center}
+\end{minipage}
+OR
+\begin{minipage}{0.5\linewidth}
+  \begin{center}
+    \begin{diagram}[width=50]
+      import Structures
+      dia = nil -- XXX
+    \end{diagram}
+
+    a node with two subtrees.
+  \end{center}
+\end{minipage}
+\end{frame}
+
+\begin{frame}
+  %% show a few example trees of size 50.  say what we mean by size.
+\end{frame}
+
+\begin{frame}
+  \begin{center}
+    \emph{How many different trees are there of size 50?}
+  \end{center}
+\end{frame}
 
 \section{Part 1: The Combinatorial Zoo}
 \label{sec:zoo}

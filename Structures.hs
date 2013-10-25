@@ -8,6 +8,7 @@ import           Diagrams.Prelude
 import           Diagrams.TwoD.Layout.Tree
 import           Graphics.SVGFonts
 
+import           Control.Applicative         ((<|>))
 import           Control.Arrow               (second)
 import           Control.Lens                (makeLenses, (^.))
 import           Data.Default.Class
@@ -20,6 +21,9 @@ import           Text.Parsec                 (between, char, many, runParser)
 import           Text.Parsec.String          (Parser)
 
 type DC = Diagram Postscript R2
+
+nil :: DC
+nil = square 1 # fc black
 
 dot :: DC
 dot = circle 1 # fc blue # lw 0
@@ -40,10 +44,22 @@ tree =
 treeParser :: Parser (Tree ())
 treeParser = Node () <$> between (char '(') (char ')') (many treeParser)
 
+bTreeParser :: Parser (BTree ())
+bTreeParser = char '(' *>
+  (     BNode () <$> bTreeParser <*> bTreeParser
+    <|> pure Empty
+  )
+  <* char ')'
+
 parseTree :: String -> Tree ()
 parseTree s = case runParser treeParser () "" s of
                 Left _ -> error "parse error"
                 Right t -> t
+
+parseBTree :: String -> BTree ()
+parseBTree s = case runParser bTreeParser () "" s of
+                 Left _ -> error "parse error"
+                 Right t -> t
 
 graph :: [(Int,Int)] -> DC
 graph es = drawEnsemble es $
@@ -81,9 +97,17 @@ cyc n
   where
     r = 4* fromIntegral n / tau
 
+decorateLeaves :: BTree a -> Tree (Maybe a)
+decorateLeaves Empty = Node Nothing []
+decorateLeaves (BNode a l r) = Node (Just a) [decorateLeaves l, decorateLeaves r]
+
 binTree :: BTree () -> DC
 binTree Empty = square 1 # fc black
-binTree t = fromMaybe mempty . fmap (renderTree (const dot) (~~)) . symmLayoutBin' with { slHSep = 5, slVSep = 4 } $ t
+binTree t
+  = renderTree (maybe nil (const dot)) (~~)
+  . symmLayout' with { slHSep = 5, slVSep = 4 }
+  . decorateLeaves
+  $ t
 
 pair :: DC -> DC -> DC
 pair d1 d2 =
