@@ -85,6 +85,20 @@ binTree :: BTree () -> DC
 binTree Empty = square 1 # fc black
 binTree t = fromMaybe mempty . fmap (renderTree (const dot) (~~)) . symmLayoutBin' with { slHSep = 5, slVSep = 4 } $ t
 
+pair :: DC -> DC -> DC
+pair d1 d2 =
+  hcat
+  [ d1 # centerXY <> halfBox (w1 + padding) (h + padding)
+  , d2 # centerXY <> halfBox (w2 + padding) (h + padding) # reflectX
+  ]
+  where
+    w1 = width d1
+    w2 = width d2
+    h  = max (height d1) (height d2)
+    padding = maximum [w1 * padFactor, w2 * padFactor, h * padFactor]
+    padFactor = 0.2
+    halfBox w h = roundedRect' w h with { radiusTL = min w h / 8, radiusBL = min w h / 8 }
+
 allBinTrees :: [[BTree ()]]
 allBinTrees = map binTreesK [0..]
   where
@@ -114,6 +128,7 @@ data BucketOpts
   = BucketOpts
   { _numBuckets    :: Int
   , _showEllipses  :: Bool
+  , _showIndices   :: Bool
   , _bucketSize    :: Double
   , _expandBuckets :: Bool
   }
@@ -124,6 +139,7 @@ instance Default BucketOpts where
   def = BucketOpts
     { _numBuckets        = 6
     , _showEllipses      = True
+    , _showIndices       = True
     , _bucketSize        = 10
     , _expandBuckets     = False
     }
@@ -140,10 +156,8 @@ bucketed' opts buckets
 
 makeBucket :: BucketOpts -> Int -> [DC] -> DC
 makeBucket opts n elts
-    = vcat' with {sep = 1}
-      [ bucketDia <> wrapLayout s s elts
-      , text' 5 (show n)
-      ]
+    = (if (opts ^. showIndices) then (=== (strutY 1 === text' 5 (show n))) else id)
+      (bucketDia <> wrapLayout s s elts)
   where
     bucketDia :: DC
     bucketDia = roundedRect s s (s / 8)
@@ -171,6 +185,16 @@ layoutGrid w h es = centerY . spread unit_Y h $ map (centerX . spread unitX w) e
 
 bucketed :: [[DC]] -> DC
 bucketed = bucketed' def
+
+------------------------------------------------------------
+
+listBuckets opts = bucketed' opts (map (:[]) . zipWith scale ([1,1,1,0.6] ++ repeat 0.4) . map list $ [0..])
+
+binTreeBuckets opts
+  = bucketed' opts
+      ( map (map (pad 1.3 . centerXY . binTree)) allBinTrees
+      # zipWith scale [1,1,0.5, 0.2, 0.2, 0.08]
+      )
 
 ------------------------------------------------------------
 

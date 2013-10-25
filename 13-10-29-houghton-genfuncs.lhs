@@ -7,6 +7,7 @@
 \usepackage{brent}
 \usepackage[backend=ps,extension=eps,outputdir=diagrams]{diagrams-latex}
 \graphicspath{{images/}}
+\usepackage{ulem}
 
 \renewcommand{\onelinecomment}{\quad--- \itshape}
 \renewcommand{\Varid}[1]{{\mathit{#1}}}
@@ -150,9 +151,7 @@ dia = (renderCirclePacking (approxRadius 8) . map (pad 1.5 . centerXY . binTree)
 import Structures
 import Control.Lens ((&), (.~))
 
-dia = bucketed
-      (map (map (pad 1.3 . centerXY . binTree)) allBinTrees
-        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.08])
+dia = binTreeBuckets with
     # centerXY # pad 1.1
 \end{diagram}
 
@@ -182,7 +181,7 @@ Pairs
 \begin{diagram}[width = 300]
 import Structures
 
-dia = bucketed (map (:[]) . zipWith scale ([1,1,1,0.6] ++ repeat 0.4) . map list $ [0..])
+dia = listBuckets with
     # centerXY # pad 1.1
 \end{diagram}
 %$
@@ -199,9 +198,7 @@ Lists
 import Structures
 import Control.Lens ((&), (.~))
 
-dia = bucketed
-      (map (map (pad 1.3 . centerXY . binTree)) allBinTrees
-        # zipWith scale [1,1,0.5, 0.2, 0.2, 0.08])
+dia = binTreeBuckets with
     # centerXY # pad 1.1
 \end{diagram}
 
@@ -234,7 +231,7 @@ Cycles
 import Structures
 import Control.Lens ((&), (.~))
 
-dia = bucketed (map (map tree) allTrees 
+dia = bucketed (map (map tree) allTrees
                 # zipWith scale [1,1,1,0.7,0.4,0.2]
                )
     # centerXY # pad 1.1
@@ -263,100 +260,257 @@ $n$-ary trees
 \section{Part 2: Taming the Zoo}
 \label{sec:taming}
 
-\begin{frame}{The Algebra of Things}
-A language for describing (some) combinatorial structures.
+\begin{frame}[fragile]{The Algebra of Species}
+An algebraic language for systematically describing (some) species.
 
-XXX pictures of trees, list, perms with their algebraic expression
-next to them
+\begin{center}
+\begin{minipage}{0.3 \textwidth}
+\begin{center}
+\begin{diagram}[width=75, height=75]
+import Structures
+
+dia = tree (parseTree "(()((()())()))")
+    # centerXY # pad 1.1
+\end{diagram}
+\[ T = 1 + X \cdot T \cdot T \]
+\end{center}
+\end{minipage}
+\begin{minipage}{0.3 \textwidth}
+\begin{center}
+\begin{diagram}[width=75, height=75]
+import Structures
+
+dia = list 5 # centerXY # pad 1.1
+\end{diagram}
+\[ L = 1 + X \cdot L \]
+\end{center}
+\end{minipage}
+\begin{minipage}{0.3 \textwidth}
+  \begin{center}
+    \begin{diagram}[width=75, height=75]
+      import Structures
+
+      dia = hcat' with {sep=1} [cyc 5, cyc 2, cyc 3]
+          # centerXY # pad 1.1
+    \end{diagram}
+  \[ S = E_+ \circ C \]
+  \end{center}
+\end{minipage}
+\end{center}
 \end{frame}
 
-\begin{frame}{Combinatorial sum}
-Disjoint union.
+% \begin{frame}
+% XXX idea: build up species compositionally, from primitives and operations.
+% \end{frame}
 
-Throw all the shapes together.  Note size stays the same.
+\begin{frame}[fragile]{Sum = OR}
+\begin{center}
+An $(F+G)$-structure is \emph{either} an $F$-structure \emph{or} a $G$-structure.
+
+\bigskip
+
+\begin{diagram}[width=300]
+import Structures
+import Control.Lens ((&), (.~))
+
+dia =
+  (vcat' with {sep = 3} . map alignR)
+  [ tRow
+  , lRow
+  , hrule (width lRow)
+  , tlRow
+  ]
+  # centerXY # pad 1.02
+  where
+    tRow = hcat' with {sep = 3} [text' 5 "T", binTreeBuckets (with & showIndices .~ False)]
+    lRow = hcat' with {sep = 3} [text' 5 "L", listBuckets (with & showIndices .~ False)]
+    tlRow = hcat' with {sep = 3}
+      [ text' 5 "T + L"
+      , bucketed
+        ( map (map (pad 1.3 . centerXY . binTree)) allBinTrees
+        # zipWith (++) (map ((:[]) . list) [0..])
+        # zipWith scale [1,1,0.5, 0.15, 0.15, 0.08]
+        )
+      ]
+\end{diagram}
+\end{center}
 \end{frame}
 
-\begin{frame}{Zero}
-  empty set.  identity for sum.
+\begin{frame}[fragile]{Zero}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+
+      dia = hcat' with {sep=3} [text' 10 "0", bucketed (repeat [])]
+        # centerXY # pad 1.1
+    \end{diagram}
+
+    \bigskip
+
+    %% XXX make into actual diagram
+    \[ 0 + F = F + 0 = F \]
+  \end{center}
 \end{frame}
 
-\begin{frame}{Combinatorial product}
-  Pairing. $size(s,t) = size(s) + size(t)$.
+\begin{frame}[fragile]{Product = AND}
+  \begin{center}
+    \begin{diagram}[width=300]
+import Structures
+import Control.Lens ((&), (.~))
+
+dia =
+  (vcat' with {sep = 3} . map alignR)
+  [ tRow
+  , lRow
+  , hrule (width lRow)
+  , tlRow
+  ]
+  # centerXY # pad 1.02
+  where
+    tRow = hcat' with {sep = 3} [text' 5 "T", binTreeBuckets (with & showIndices .~ False)]
+    lRow = hcat' with {sep = 3} [text' 5 "L", listBuckets (with & showIndices .~ False)]
+    tlRow = hcat' with {sep = 3}
+      [ text' 5 "T • L"
+      , bucketed (repeat [])  -- XXX todo!
+      ]
+    \end{diagram}
+  \end{center}
 \end{frame}
 
-\begin{frame}{Unit}
-  A set with a single structure.  $size(BOX) = 0$.
+\begin{frame}[fragile]{One}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+
+      dia = hcat' with {sep=3} [text' 10 "1", bucketed ([square 1 # fc black] : repeat [])]
+        # centerXY # pad 1.1
+    \end{diagram}
+
+    \bigskip
+
+    % XXX draw isomorphism
+
+    \[ F \cdot 1 = 1 \cdot F = F \]
+  \end{center}
 \end{frame}
 
-\begin{frame}{Singleton}
-  Similar to unit, but with size 1.
+\begin{frame}[fragile]{Singleton}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+
+      dia = hcat' with {sep=3} [text' 10 "X", bucketed ([] : [dot] : repeat [])]
+        # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
 \end{frame}
 
 \begin{frame}{Examples}
 
 \end{frame}
 
-\begin{frame}{Composition!}
-
-\end{frame}
-
 \begin{frame}{Other things}
-
+  \begin{itemize}
+  \item Other primitive species: bags, cycles, \dots
+  \item Other operations: composition, Cartesian product, \dots
+  \end{itemize}
 \end{frame}
 
 \section{Part 3: Generating Functions}
 \label{sec:gen-funcs}
 
 \begin{frame}{Generating functions}
-  ``A generating function is a clothesline on which we hang up a
-  sequence of numbers for display.''  --- Herbert Wilf
+  \begin{center}
+    %% XXX ceci n'est pas un...
+    \onslide<2-> Generating functions are not functions.
 
-\[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+    \bigskip
+
+    \onslide<3->``A generating function is a clothesline
+    on which we hang up a sequence of numbers for display.''  ---
+    Herbert Wilf
+
+    \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+  \end{center}
 \end{frame}
 
-\begin{frame}{GFs for combinatorial structures}
-   \[ F(x) = \sum_{n \geq 0} |F_n| x^n = |F_0| + |F_1|x + |F_2|x^2 + \dots \]
+\begin{frame}[fragile]{Generating functions}
+  \begin{center}
+    \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+
+    \bigskip
+
+    \begin{diagram}[width=300]
+      import Structures
+
+      dia = hcat' with {sep=3}
+        [ text' 5 "f"
+        , bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
 \end{frame}
 
-\begin{frame}{Examples}
-  $X(x) = x$
-  $0(x) = 0$
-  $1(x) = 1$
-  $L(x) = 1 + x + x^2 + x^3 + \dots$
+\begin{frame}[fragile]{Species and generating functions}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+      import Control.Lens ((&), (.~))
+
+      dia =
+        (vcat' with {sep=3} . map alignR)
+        [ hcat' with {sep=3} [text' 8 "T", binTreeBuckets (with & showIndices .~ False)]
+        , hcat' with {sep=3} [text' 8 "T(x)", bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])]
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
 \end{frame}
 
-\begin{frame}{Sum}
-  \[ |(F+G)_n| = |F_n| + |G_n| \]
+% \begin{frame}{Examples}
+%   $X(x) = x$
+%   $0(x) = 0$
+%   $1(x) = 1$
+%   $L(x) = 1 + x + x^2 + x^3 + \dots$
+% \end{frame}
 
-  so
+% \begin{frame}{Sum}
+%   \[ ||(F+G)_n|| = ||F_n|| + ||G_n|| \]
 
-  \[ (F+G)(x) = F(x) + G(x) \]
-\end{frame}
+%   so
 
-\begin{frame}{Product}
-  \[ |(FG)_n| = \sum_{0 \leq k \leq n} |F_k| |G_{n-k}| \]
+%   \[ (F+G)(x) = F(x) + G(x) \]
+% \end{frame}
 
-  so
+% \begin{frame}{Product}
+%   \[ ||(FG)_n|| = \sum_{0 \leq k \leq n} ||F_k|| ||G_{n-k}|| \]
 
-  \[ (FG)(x) = F(x) G(x) \]
+%   so
 
-  XXX add some pictures
-\end{frame}
+%   \[ (FG)(x) = F(x) G(x) \]
 
-\begin{frame}{Example}
-  \[ T = 1 + X \cdot T \cdot T \]
+%   XXX add some pictures
+% \end{frame}
 
-  so etc. XXX
+% \begin{frame}{Example}
+%   \[ T = 1 + X \cdot T \cdot T \]
+
+%   so etc. XXX
+% \end{frame}
+
+\begin{frame}{}
+
 \end{frame}
 
 \section{Part 4: Semirings}
 \label{sec:semirings}
 
 \begin{frame}{Wilf again}
-  ``A generating function is a clothesline on which we hang up a
-  sequence of numbers for display.''
-
-  XXX strike out ``numbers'', replace with ``stuff''?
+  \begin{center}
+    ``A generating function is a clothesline on which we hang up a
+    sequence of \sout{numbers} \emph{things} for display.''
+  \end{center}
 \end{frame}
 
 \begin{frame}{Semirings}
@@ -367,16 +521,29 @@ Throw all the shapes together.  Note size stays the same.
   \item A binary operation $\cdot$, with identity $1 \in S$
   \item ($\dots$ and a few other laws)
   \end{itemize}
+
+  \onslide<2->
+    \bigskip
+    You already know some examples!
+
 \end{frame}
 
 \begin{frame}{Examples}
-  You already know some examples!
+  \begin{itemize}
+  \item<+-> Booleans (true/false), with AND ($\land$) and OR ($\lor$)
+  \item<+-> The integers, with the usual $+$ and $\cdot$
+  \item<+-> Finite sets, with disjoint union ($\uplus$) and Cartesian
+    product ($\times$)
+  \end{itemize}
+\end{frame}
 
-  XXX examples
+\begin{frame}{Generalized generating functions}
+  Given a semiring $S$, we can build another semiring of generating
+  functions with coefficients from $S$.
 \end{frame}
 
 \begin{frame}
-  XXX generalize
+
 \end{frame}
 
 \end{document}
