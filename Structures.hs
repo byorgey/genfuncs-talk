@@ -23,13 +23,13 @@ import           Text.Parsec.String          (Parser)
 type DC = Diagram Postscript R2
 
 nil :: DC
-nil = square 1 # fc black
+nil = square 1 # fc white
 
 dot :: DC
 dot = circle 1 # fc blue # lw 0
 
 list :: Int -> DC
-list 0 = square 1 # fc black
+list 0 = nil
 list n = dots <> rule
   where
     dots = hcat' with {sep = 2} (replicate n dot)
@@ -102,7 +102,7 @@ decorateLeaves Empty = Node Nothing []
 decorateLeaves (BNode a l r) = Node (Just a) [decorateLeaves l, decorateLeaves r]
 
 binTree :: BTree () -> DC
-binTree Empty = square 1 # fc black
+binTree Empty = nil
 binTree t
   = renderTree (maybe nil (const dot)) (~~)
   . symmLayout' with { slHSep = 5, slVSep = 4 }

@@ -39,7 +39,11 @@
   {
     \begin{frame}<beamer>
       \frametitle{}
+
       \begin{center}
+        \includegraphics[width=1in]{tree.jpg}
+        \bigskip
+
         {\Huge \insertsectionhead}
       \end{center}
     \end{frame}
@@ -106,6 +110,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\setcounter{section}{-1}
+\section{Part 0: Trees}
+\label{sec:trees}
+
 \begin{frame}{Trees}
   \begin{center}
     \includegraphics[width=3in]{tree.jpg}
@@ -123,18 +131,34 @@
         # centerXY # pad 1.1
     \end{diagram}
 
-    This is \dots also a tree.
+    This is also a tree.
   \end{center}
 \end{frame}
 
-\begin{frame}[fragile]{Trees}
-A tree is either\dots
+\begin{frame}{Trees}
+  \begin{itemize}
+  \item Phylogenetic trees
+  \item Binary search trees
+  \item Decision trees
+  \item Parse trees
+  \item Game trees
+  \item Family trees
+  \item Directory trees
+  \item Playoff brackets
+  \item \dots
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Binary trees}
+A binary tree is either\dots
+
+\bigskip
 
 \begin{minipage}{0.4\linewidth}
   \begin{center}
-    \begin{diagram}[width=50]
+    \begin{diagram}[width=25]
       import Structures
-      dia = nil
+      dia = nil # centerXY # pad 1.1
     \end{diagram}
 
     empty,
@@ -143,23 +167,59 @@ A tree is either\dots
 OR
 \begin{minipage}{0.5\linewidth}
   \begin{center}
-    \begin{diagram}[width=50]
+    \begin{diagram}[width=100]
       import Structures
-      dia = nil -- XXX
+      dia = vcat' with {catMethod = Distrib, sep = 4}
+        [ dot # named "parent"
+        , hcat' with {catMethod = Distrib, sep = 6}
+          [ subtree # named "left"
+          , subtree # named "right"
+          ]
+          # centerX
+        ]
+        # withNames ["parent", "left", "right"] (\[p,l,r] ->
+            beneath (location p ~~ location l <> location p ~~ location r)
+          )
+        # centerXY # pad 1.1
+
+      subtree = triangle 4 # scaleY 1.5 # atop (text' 3 "T") # alignT
     \end{diagram}
 
-    a node with two subtrees.
+    a node with two binary trees.
   \end{center}
 \end{minipage}
 \end{frame}
 
-\begin{frame}
-  %% show a few example trees of size 50.  say what we mean by size.
+\begin{frame}[fragile]{Binary trees}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+      dia = (hcat' with {sep = 6} . map binTree . take 6 . concat $ allBinTrees)
+          # centerXY # pad 1.1
+    \end{diagram}
+    %$
+  \end{center}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]{A tree}
   \begin{center}
-    \emph{How many different trees are there of size 50?}
+    \begin{diagram}[width=300,height=200]
+import Structures
+import BoltzmannTrees
+import System.IO.Unsafe
+
+bigTreeSize = 200
+
+Just bigTree = unsafePerformIO (runGenM bigTreeSize 0.1 genTree)
+dia = (binTree . toBTree $ bigTree)   -- $
+  # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}{A question}
+  \begin{center}
+    \emph{Q: How many different binary trees are there of size 50?}
   \end{center}
 \end{frame}
 
