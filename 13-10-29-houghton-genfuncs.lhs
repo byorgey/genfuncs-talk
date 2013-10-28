@@ -41,7 +41,7 @@
       \frametitle{}
 
       \begin{center}
-        \includegraphics[width=1in]{tree.jpg}
+        \includegraphics[width=1in]{\sectionimg}
         \bigskip
 
         {\Huge \insertsectionhead}
@@ -110,6 +110,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\def\sectionimg{tree.jpg}
+
 \setcounter{section}{-1}
 \section{Part 0: Trees}
 \label{sec:trees}
@@ -135,7 +137,7 @@
   \end{center}
 \end{frame}
 
-\begin{frame}{Trees}
+\begin{frame}{Trees, trees, and more trees}
   \begin{itemize}
   \item Phylogenetic trees
   \item Binary search trees
@@ -150,7 +152,14 @@
 \end{frame}
 
 \begin{frame}[fragile]{Binary trees}
-A binary tree is either\dots
+A binary tree
+\begin{minipage}[c]{0.1\linewidth}
+\begin{diagram}[width=30]
+  import Structures
+  dia = subtree # centerXY # pad 1.1
+\end{diagram}
+\end{minipage}
+is\dots
 
 \bigskip
 
@@ -169,23 +178,10 @@ OR
   \begin{center}
     \begin{diagram}[width=100]
       import Structures
-      dia = vcat' with {catMethod = Distrib, sep = 4}
-        [ dot # named "parent"
-        , hcat' with {catMethod = Distrib, sep = 6}
-          [ subtree # named "left"
-          , subtree # named "right"
-          ]
-          # centerX
-        ]
-        # withNames ["parent", "left", "right"] (\[p,l,r] ->
-            beneath (location p ~~ location l <> location p ~~ location r)
-          )
-        # centerXY # pad 1.1
-
-      subtree = triangle 4 # scaleY 1.5 # atop (text' 3 "T") # alignT
+      dia = treeDef # centerXY # pad 1.1
     \end{diagram}
 
-    a node with two binary trees.
+    a node AND two binary trees.
   \end{center}
 \end{minipage}
 \end{frame}
@@ -194,21 +190,22 @@ OR
   \begin{center}
     \begin{diagram}[width=300]
       import Structures
-      dia = (hcat' with {sep = 6} . map binTree . take 6 . concat $ allBinTrees)
+      import Data.List.Split
+      dia = (vcat' with {sep = 6} . map (centerX . hcat' with {sep=6}) . chunksOf 6 . map binTree . take 12 . concat $ allBinTrees)
           # centerXY # pad 1.1
     \end{diagram}
     %$
   \end{center}
 \end{frame}
 
-\begin{frame}[fragile]{A tree}
+\begin{frame}[fragile]{A binary tree}
   \begin{center}
     \begin{diagram}[width=300,height=200]
 import Structures
 import BoltzmannTrees
 import System.IO.Unsafe
 
-bigTreeSize = 200
+bigTreeSize = 300
 
 Just bigTree = unsafePerformIO (runGenM bigTreeSize 0.1 genTree)
 dia = (binTree . toBTree $ bigTree)   -- $
@@ -223,202 +220,74 @@ dia = (binTree . toBTree $ bigTree)   -- $
   \end{center}
 \end{frame}
 
-\section{Part 1: The Combinatorial Zoo}
-\label{sec:zoo}
+\begin{frame}[fragile]{Binary trees by size}
+\begin{center}
+\begin{diagram}[width=300]
+import Structures
+import Control.Lens ((&), (.~))
 
-\begin{frame}[fragile]{Combinatorial structures}
-Informally: ``dots arranged in some shape''.
+dia = hcat' with {sep = 3} [binTreeBuckets with, text' 7 "?"]
+    # centerXY # pad 1.1
+\end{diagram}
+\end{center}
+\end{frame}
 
-%% XX if time, make variant pictures to go with words like "can
-%% generalize this... different color dots, labels instead of dots,
-%% ..."
+\def\sectionimg{algebra.jpg}
+
+\section{Part 1: The Algebra of Things}
+\label{sec:algebra}
+
+\begin{frame}[fragile]{Binary trees, again}
+A binary tree
+\begin{minipage}[c]{0.1\linewidth}
+\begin{diagram}[width=30]
+  import Structures
+  dia = subtree # centerXY # pad 1.1
+\end{diagram}
+\end{minipage}
+is\dots \onslide<2->{\hfill \framebox{$T = 1 + X\cdot T \cdot T$} \hfill}
 
 \bigskip
-\begin{center}
-  \begin{diagram}[width=200]
-    import Structures
 
-    dia = theGraph
-      # rotateBy (1/4) # sized (Width 4)
-      # centerXY # pad 1.1
-    -- XXX use some different structure?
-  \end{diagram}
-\end{center}
+\begin{minipage}{0.4\linewidth}
+  \begin{center}
+    \begin{diagram}[width=25]
+      import Structures
+      dia = nil # centerXY # pad 1.1
+    \end{diagram}
 
+    empty,
+  \end{center}
+\end{minipage}
+OR
+\begin{minipage}{0.5\linewidth}
+  \begin{center}
+    \begin{diagram}[width=100]
+      import Structures
+      dia = treeDef # centerXY # pad 1.1
+    \end{diagram}
+
+    a node AND two binary trees.
+  \end{center}
+\end{minipage}
 \end{frame}
 
 \begin{frame}[fragile]{Species}
-\begin{center}
-A ``species'' is a \emph{family of related structures}.
-
-\begin{diagram}[width=200]
-import Structures
-import Diagrams.TwoD.Layout.CirclePacking
-
-dia = (renderCirclePacking (approxRadius 8) . map (pad 1.5 . centerXY . binTree) . concat . take 7 $ allBinTrees)
-    # centerXY # pad 1.1
-\end{diagram}
-%$
-\end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Species, by size}
-\begin{center}
-\begin{diagram}[width=300]
-import Structures
-import Control.Lens ((&), (.~))
-
-dia = binTreeBuckets with
-    # centerXY # pad 1.1
-\end{diagram}
-
-\bigskip
-
-``size'' $=$ number of dots.
-\end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Examples}
-\begin{center}
-\begin{diagram}[width = 300]
-import Structures
-
-dia = bucketed ([[], [], [list 2]] ++ repeat [])
-    # centerXY # pad 1.1
-\end{diagram}
-
-\bigskip
-
-Pairs
-\end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Examples}
-\begin{center}
-\begin{diagram}[width = 300]
-import Structures
-
-dia = listBuckets with
-    # centerXY # pad 1.1
-\end{diagram}
-%$
-
-\bigskip
-
-Lists
-\end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Examples}
-\begin{center}
-\begin{diagram}[width=300]
-import Structures
-import Control.Lens ((&), (.~))
-
-dia = binTreeBuckets with
-    # centerXY # pad 1.1
-\end{diagram}
-
-\bigskip
-
-Binary trees
-\end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Examples}
-\begin{center}
-\begin{diagram}[width=300]
-import Structures
-import Control.Lens ((&), (.~))
-
-dia = bucketed (map (:[]) . map cyc $ [0..])
-    # centerXY # pad 1.1
-\end{diagram}
-%$
-
-\bigskip
-
-Cycles
-\end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Examples}
-\begin{center}
-\begin{diagram}[width=300]
-import Structures
-import Control.Lens ((&), (.~))
-
-dia = bucketed (map (map tree) allTrees
-                # zipWith scale [1,1,1,0.7,0.4,0.2]
-               )
-    # centerXY # pad 1.1
-\end{diagram}
-%$
-
-\bigskip
-
-$n$-ary trees
-\end{center}
-\end{frame}
-
-%% XXX add other examples?  Organic molecules? etc?
-
-\begin{frame}{Questions}
-  Given a particular family of structures (species), we can ask:
-  \begin{itemize}
-  \item How many are there (of a given size)?
-  \item How many with some property $P$?
-  \item Can we list them all?
-  \item Can we generate them at random?
-  \item $\dots$?
-  \end{itemize}
-\end{frame}
-
-\section{Part 2: Taming the Zoo}
-\label{sec:taming}
-
-\begin{frame}[fragile]{The Algebra of Species}
-An algebraic language for systematically describing (some) species.
-
-\begin{center}
-\begin{minipage}{0.3 \textwidth}
-\begin{center}
-\begin{diagram}[width=75, height=75]
-import Structures
-
-dia = tree (parseTree "(()((()())()))")
-    # centerXY # pad 1.1
-\end{diagram}
-\[ T = 1 + X \cdot T \cdot T \]
-\end{center}
-\end{minipage}
-\begin{minipage}{0.3 \textwidth}
-\begin{center}
-\begin{diagram}[width=75, height=75]
-import Structures
-
-dia = list 5 # centerXY # pad 1.1
-\end{diagram}
-\[ L = 1 + X \cdot L \]
-\end{center}
-\end{minipage}
-\begin{minipage}{0.3 \textwidth}
   \begin{center}
-    \begin{diagram}[width=75, height=75]
-      import Structures
+\begin{diagram}[width=300,height=200]
+import Structures
+import Control.Lens ((&), (.~))
 
-      dia = hcat' with {sep=1} [cyc 5, cyc 2, cyc 3]
-          # centerXY # pad 1.1
-    \end{diagram}
-  \[ S = E_+ \circ C \]
+dia =
+  (vcat' with {sep = 5} . map (hcat' with {sep = 3}))
+  [ [text' 5 "T", binTreeBuckets (with & showIndices .~ False)]
+  , [text' 5 "F", drawSpecies (with & showIndices .~ False) speciesA]
+  , [text' 5 "G", drawSpecies with speciesB]
+  ]
+  # centerXY # pad 1.02
+\end{diagram}
   \end{center}
-\end{minipage}
-\end{center}
 \end{frame}
-
-% \begin{frame}
-% XXX idea: build up species compositionally, from primitives and operations.
-% \end{frame}
 
 \begin{frame}[fragile]{Sum = OR}
 \begin{center}
@@ -432,22 +301,18 @@ import Control.Lens ((&), (.~))
 
 dia =
   (vcat' with {sep = 3} . map alignR)
-  [ tRow
-  , lRow
-  , hrule (width lRow)
-  , tlRow
+  [ fRow
+  , gRow
+  , hrule (width fgRow)
+  , fgRow
   ]
   # centerXY # pad 1.02
   where
-    tRow = hcat' with {sep = 3} [text' 5 "T", binTreeBuckets (with & showIndices .~ False)]
-    lRow = hcat' with {sep = 3} [text' 5 "L", listBuckets (with & showIndices .~ False)]
-    tlRow = hcat' with {sep = 3}
-      [ text' 5 "T + L"
-      , bucketed
-        ( map (map (pad 1.3 . centerXY . binTree)) allBinTrees
-        # zipWith (++) (map ((:[]) . list) [0..])
-        # zipWith scale [1,1,0.5, 0.15, 0.15, 0.08]
-        )
+    fRow = hcat' with {sep = 3} [text' 5 "F", drawSpecies (with & showIndices .~ False) speciesA]
+    gRow = hcat' with {sep = 3} [text' 5 "G", drawSpecies (with & showIndices .~ False) speciesB]
+    fgRow = hcat' with {sep = 3}
+      [ text' 5 "F + G"
+      , drawSpecies with (zipWith (++) speciesA speciesB)
       ]
 \end{diagram}
 \end{center}
@@ -457,15 +322,19 @@ dia =
   \begin{center}
     \begin{diagram}[width=300]
       import Structures
+      import Control.Lens ((&), (.~))
 
-      dia = hcat' with {sep=3} [text' 10 "0", bucketed (repeat [])]
-        # centerXY # pad 1.1
+      dia =
+        vcat' with {sep = 3} rows
+        # centerXY # pad 1.02
+        where
+          rows = map (alignR . hcat' with {sep=3})
+            [ [text' 10 "0", bucketed' (with & showIndices .~ False) (repeat [])]
+            , [text' 5 "F", drawSpecies (with & showIndices .~ False) speciesA]
+            , [hrule (width (rows !! 3))]
+            , [text' 5 "0 + F", drawSpecies (with & showIndices .~ False) speciesA]
+            ]
     \end{diagram}
-
-    \bigskip
-
-    %% XXX make into actual diagram
-    \[ 0 + F = F + 0 = F \]
   \end{center}
 \end{frame}
 
@@ -499,7 +368,7 @@ dia =
     \begin{diagram}[width=300]
       import Structures
 
-      dia = hcat' with {sep=3} [text' 10 "1", bucketed ([square 1 # fc black] : repeat [])]
+      dia = hcat' with {sep=3} [text' 10 "1", bucketed ([nil] : repeat [])]
         # centerXY # pad 1.1
     \end{diagram}
 
@@ -522,145 +391,304 @@ dia =
   \end{center}
 \end{frame}
 
-\begin{frame}{Examples}
-
-\end{frame}
-
-\begin{frame}{Other things}
-  \begin{itemize}
-  \item Other primitive species: bags, cycles, \dots
-  \item Other operations: composition, Cartesian product, \dots
-  \end{itemize}
-\end{frame}
-
-\section{Part 3: Generating Functions}
-\label{sec:gen-funcs}
-
-\begin{frame}{Generating functions}
-  \begin{center}
-    %% XXX ceci n'est pas un...
-    \onslide<2-> Generating functions are not functions.
-
-    \bigskip
-
-    \onslide<3->``A generating function is a clothesline
-    on which we hang up a sequence of numbers for display.''  ---
-    Herbert Wilf
-
-    \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
-  \end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Generating functions}
-  \begin{center}
-    \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
-
-    \bigskip
-
-    \begin{diagram}[width=300]
-      import Structures
-
-      dia = hcat' with {sep=3}
-        [ text' 5 "f"
-        , bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])
-        ]
-        # centerXY # pad 1.1
-    \end{diagram}
-  \end{center}
-\end{frame}
-
-\begin{frame}[fragile]{Species and generating functions}
-  \begin{center}
-    \begin{diagram}[width=300]
-      import Structures
-      import Control.Lens ((&), (.~))
-
-      dia =
-        (vcat' with {sep=3} . map alignR)
-        [ hcat' with {sep=3} [text' 8 "T", binTreeBuckets (with & showIndices .~ False)]
-        , hcat' with {sep=3} [text' 8 "T(x)", bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])]
-        ]
-        # centerXY # pad 1.1
-    \end{diagram}
-  \end{center}
-\end{frame}
-
-% \begin{frame}{Examples}
-%   $X(x) = x$
-%   $0(x) = 0$
-%   $1(x) = 1$
-%   $L(x) = 1 + x + x^2 + x^3 + \dots$
-% \end{frame}
-
-% \begin{frame}{Sum}
-%   \[ ||(F+G)_n|| = ||F_n|| + ||G_n|| \]
-
-%   so
-
-%   \[ (F+G)(x) = F(x) + G(x) \]
-% \end{frame}
-
-% \begin{frame}{Product}
-%   \[ ||(FG)_n|| = \sum_{0 \leq k \leq n} ||F_k|| ||G_{n-k}|| \]
-
-%   so
-
-%   \[ (FG)(x) = F(x) G(x) \]
-
-%   XXX add some pictures
-% \end{frame}
-
-% \begin{frame}{Example}
-%   \[ T = 1 + X \cdot T \cdot T \]
-
-%   so etc. XXX
-% \end{frame}
-
-\begin{frame}{}
-
-\end{frame}
-
-\section{Part 4: Semirings}
-\label{sec:semirings}
-
-\begin{frame}{Wilf again}
-  \begin{center}
-    ``A generating function is a clothesline on which we hang up a
-    sequence of \sout{numbers} \emph{things} for display.''
-  \end{center}
-\end{frame}
-
-\begin{frame}{Semirings}
-  A \emph{semiring} is:
-  \begin{itemize}
-  \item A set $S$
-  \item A binary operation $+$, with identity $0 \in S$
-  \item A binary operation $\cdot$, with identity $1 \in S$
-  \item ($\dots$ and a few other laws)
-  \end{itemize}
-
-  \onslide<2->
-    \bigskip
-    You already know some examples!
-
-\end{frame}
-
-\begin{frame}{Examples}
-  \begin{itemize}
-  \item<+-> Booleans (true/false), with AND ($\land$) and OR ($\lor$)
-  \item<+-> The integers, with the usual $+$ and $\cdot$
-  \item<+-> Finite sets, with disjoint union ($\uplus$) and Cartesian
-    product ($\times$)
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Generalized generating functions}
-  Given a semiring $S$, we can build another semiring of generating
-  functions with coefficients from $S$.
-\end{frame}
-
-\begin{frame}
-
-\end{frame}
 
 \end{document}
+
+% \begin{frame}[fragile]{Species}
+% \begin{center}
+% A ``species'' is a \emph{family of related structures}.
+
+% \begin{diagram}[width=200]
+% import Structures
+% import Diagrams.TwoD.Layout.CirclePacking
+
+% dia = (renderCirclePacking (approxRadius 8) . map (pad 1.5 . centerXY . binTree) . concat . take 6 $ allBinTrees)
+%     # centerXY # pad 1.1
+% \end{diagram}
+% %$
+% \end{center}
+% \end{frame}
+
+
+% \section{Part 2: Taming the Zoo}
+% \label{sec:taming}
+
+% \begin{frame}[fragile]{The Algebra of Species}
+% An algebraic language for systematically describing (some) species.
+
+% \begin{center}
+% \begin{minipage}{0.3 \textwidth}
+% \begin{center}
+% \begin{diagram}[width=75, height=75]
+% import Structures
+
+% dia = tree (parseTree "(()((()())()))")
+%     # centerXY # pad 1.1
+% \end{diagram}
+% \[ T = 1 + X \cdot T \cdot T \]
+% \end{center}
+% \end{minipage}
+% \begin{minipage}{0.3 \textwidth}
+% \begin{center}
+% \begin{diagram}[width=75, height=75]
+% import Structures
+
+% dia = list 5 # centerXY # pad 1.1
+% \end{diagram}
+% \[ L = 1 + X \cdot L \]
+% \end{center}
+% \end{minipage}
+% \begin{minipage}{0.3 \textwidth}
+%   \begin{center}
+%     \begin{diagram}[width=75, height=75]
+%       import Structures
+
+%       dia = hcat' with {sep=1} [cyc 5, cyc 2, cyc 3]
+%           # centerXY # pad 1.1
+%     \end{diagram}
+%   \[ S = E_+ \circ C \]
+%   \end{center}
+% \end{minipage}
+% \end{center}
+% \end{frame}
+
+% % \begin{frame}
+% % XXX idea: build up species compositionally, from primitives and operations.
+% % \end{frame}
+
+% \begin{frame}{Examples}
+
+% \end{frame}
+
+% \begin{frame}{Other things}
+%   \begin{itemize}
+%   \item Other primitive species: bags, cycles, \dots
+%   \item Other operations: composition, Cartesian product, \dots
+%   \end{itemize}
+% \end{frame}
+
+% \section{Part 3: Generating Functions}
+% \label{sec:gen-funcs}
+
+% \begin{frame}{Generating functions}
+%   \begin{center}
+%     %% XXX ceci n'est pas un...
+%     \onslide<2-> Generating functions are not functions.
+
+%     \bigskip
+
+%     \onslide<3->``A generating function is a clothesline
+%     on which we hang up a sequence of numbers for display.''  ---
+%     Herbert Wilf
+
+%     \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+%   \end{center}
+% \end{frame}
+
+% \begin{frame}[fragile]{Generating functions}
+%   \begin{center}
+%     \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+
+%     \bigskip
+
+%     \begin{diagram}[width=300]
+%       import Structures
+
+%       dia = hcat' with {sep=3}
+%         [ text' 5 "f"
+%         , bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])
+%         ]
+%         # centerXY # pad 1.1
+%     \end{diagram}
+%   \end{center}
+% \end{frame}
+
+% \begin{frame}[fragile]{Species and generating functions}
+%   \begin{center}
+%     \begin{diagram}[width=300]
+%       import Structures
+%       import Control.Lens ((&), (.~))
+
+%       dia =
+%         (vcat' with {sep=3} . map alignR)
+%         [ hcat' with {sep=3} [text' 8 "T", binTreeBuckets (with & showIndices .~ False)]
+%         , hcat' with {sep=3} [text' 8 "T(x)", bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])]
+%         ]
+%         # centerXY # pad 1.1
+%     \end{diagram}
+%   \end{center}
+% \end{frame}
+
+% % \begin{frame}{Examples}
+% %   $X(x) = x$
+% %   $0(x) = 0$
+% %   $1(x) = 1$
+% %   $L(x) = 1 + x + x^2 + x^3 + \dots$
+% % \end{frame}
+
+% % \begin{frame}{Sum}
+% %   \[ ||(F+G)_n|| = ||F_n|| + ||G_n|| \]
+
+% %   so
+
+% %   \[ (F+G)(x) = F(x) + G(x) \]
+% % \end{frame}
+
+% % \begin{frame}{Product}
+% %   \[ ||(FG)_n|| = \sum_{0 \leq k \leq n} ||F_k|| ||G_{n-k}|| \]
+
+% %   so
+
+% %   \[ (FG)(x) = F(x) G(x) \]
+
+% %   XXX add some pictures
+% % \end{frame}
+
+% % \begin{frame}{Example}
+% %   \[ T = 1 + X \cdot T \cdot T \]
+
+% %   so etc. XXX
+% % \end{frame}
+
+% \begin{frame}{}
+
+% \end{frame}
+
+% \section{Part 4: Semirings}
+% \label{sec:semirings}
+
+% \begin{frame}{Wilf again}
+%   \begin{center}
+%     ``A generating function is a clothesline on which we hang up a
+%     sequence of \sout{numbers} \emph{things} for display.''
+%   \end{center}
+% \end{frame}
+
+% \begin{frame}{Semirings}
+%   A \emph{semiring} is:
+%   \begin{itemize}
+%   \item A set $S$
+%   \item A binary operation $+$, with identity $0 \in S$
+%   \item A binary operation $\cdot$, with identity $1 \in S$
+%   \item ($\dots$ and a few other laws)
+%   \end{itemize}
+
+%   \onslide<2->
+%     \bigskip
+%     You already know some examples!
+
+% \end{frame}
+
+% \begin{frame}{Examples}
+%   \begin{itemize}
+%   \item<+-> Booleans (true/false), with AND ($\land$) and OR ($\lor$)
+%   \item<+-> The integers, with the usual $+$ and $\cdot$
+%   \item<+-> Finite sets, with disjoint union ($\uplus$) and Cartesian
+%     product ($\times$)
+%   \end{itemize}
+% \end{frame}
+
+% \begin{frame}{Generalized generating functions}
+%   Given a semiring $S$, we can build another semiring of generating
+%   functions with coefficients from $S$.
+% \end{frame}
+
+% \begin{frame}
+
+% \end{frame}
+
+% \begin{frame}[fragile]{Examples}
+% \begin{center}
+% \begin{diagram}[width = 300]
+% import Structures
+
+% dia = bucketed ([[], [], [list 2]] ++ repeat [])
+%     # centerXY # pad 1.1
+% \end{diagram}
+
+% \bigskip
+
+% Pairs
+% \end{center}
+% \end{frame}
+
+% \begin{frame}[fragile]{Examples}
+% \begin{center}
+% \begin{diagram}[width = 300]
+% import Structures
+
+% dia = listBuckets with
+%     # centerXY # pad 1.1
+% \end{diagram}
+% %$
+
+% \bigskip
+
+% Lists
+% \end{center}
+% \end{frame}
+
+% \begin{frame}[fragile]{Examples}
+% \begin{center}
+% \begin{diagram}[width=300]
+% import Structures
+% import Control.Lens ((&), (.~))
+
+% dia = binTreeBuckets with
+%     # centerXY # pad 1.1
+% \end{diagram}
+
+% \bigskip
+
+% Binary trees
+% \end{center}
+% \end{frame}
+
+% \begin{frame}[fragile]{Examples}
+% \begin{center}
+% \begin{diagram}[width=300]
+% import Structures
+% import Control.Lens ((&), (.~))
+
+% dia = bucketed (map (:[]) . map cyc $ [0..])
+%     # centerXY # pad 1.1
+% \end{diagram}
+% %$
+
+% \bigskip
+
+% Cycles
+% \end{center}
+% \end{frame}
+
+% \begin{frame}[fragile]{Examples}
+% \begin{center}
+% \begin{diagram}[width=300]
+% import Structures
+% import Control.Lens ((&), (.~))
+
+% dia = bucketed (map (map tree) allTrees
+%                 # zipWith scale [1,1,1,0.7,0.4,0.2]
+%                )
+%     # centerXY # pad 1.1
+% \end{diagram}
+% %$
+
+% \bigskip
+
+% $n$-ary trees
+% \end{center}
+% \end{frame}
+
+% %% XXX add other examples?  Organic molecules? etc?
+
+% \begin{frame}{Questions}
+%   Given a particular family of structures (species), we can ask:
+%   \begin{itemize}
+%   \item How many are there (of a given size)?
+%   \item How many with some property $P$?
+%   \item Can we list them all?
+%   \item Can we generate them at random?
+%   \item $\dots$?
+%   \end{itemize}
+% \end{frame}

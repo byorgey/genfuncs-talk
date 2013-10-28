@@ -20,15 +20,15 @@ import           Physics.ForceLayout
 import           Text.Parsec                 (between, char, many, runParser)
 import           Text.Parsec.String          (Parser)
 
-type DC = Diagram Postscript R2
+type Dia = Diagram Postscript R2
 
-nil :: DC
+nil :: Dia
 nil = square 1 # fc white
 
-dot :: DC
+dot :: Dia
 dot = circle 1 # fc blue # lw 0
 
-list :: Int -> DC
+list :: Int -> Dia
 list 0 = nil
 list n = dots <> rule
   where
@@ -37,7 +37,7 @@ list n = dots <> rule
 
 translateXTo ref mv = alignL mv # maybe id translateX (fst <$> extentX ref)
 
-tree :: Tree () -> DC
+tree :: Tree () -> Dia
 tree =
   renderTree (const dot) (~~) . symmLayout' with { slHSep = 4, slVSep = 4 }
 
@@ -61,7 +61,7 @@ parseBTree s = case runParser bTreeParser () "" s of
                  Left _ -> error "parse error"
                  Right t -> t
 
-graph :: [(Int,Int)] -> DC
+graph :: [(Int,Int)] -> Dia
 graph es = drawEnsemble es $
            forceLayout (FLOpts { damping     = 0.8
                                , energyLimit = Just 0.001
@@ -80,13 +80,13 @@ graph es = drawEnsemble es $
     particleMap :: M.Map Int (Particle R2)
     particleMap = M.fromList $ zip vs (map initParticle (regPoly (length vs) 4))
 
-drawEnsemble :: [(Int,Int)] -> Ensemble R2 -> DC
+drawEnsemble :: [(Int,Int)] -> Ensemble R2 -> Dia
 drawEnsemble es = applyAll (map drawEdge es) . mconcat . map drawPt . (map . second) (^.pos) . M.assocs . (^.particles)
   where
     drawPt (pid, p) = dot # named pid # moveTo p
     drawEdge (v1,v2) = withNames [v1,v2] $ \[s1,s2] -> beneath (location s1 ~~ location s2)
 
-cyc :: Int -> DC
+cyc :: Int -> Dia
 cyc 0 = mempty
 cyc 1 = dot
 cyc n
@@ -101,7 +101,7 @@ decorateLeaves :: BTree a -> Tree (Maybe a)
 decorateLeaves Empty = Node Nothing []
 decorateLeaves (BNode a l r) = Node (Just a) [decorateLeaves l, decorateLeaves r]
 
-binTree :: BTree () -> DC
+binTree :: BTree () -> Dia
 binTree Empty = nil
 binTree t
   = renderTree (maybe nil (const dot)) (~~)
@@ -109,7 +109,7 @@ binTree t
   . decorateLeaves
   $ t
 
-pair :: DC -> DC -> DC
+pair :: Dia -> Dia -> Dia
 pair d1 d2 =
   hcat
   [ d1 # centerXY <> halfBox (w1 + padding) (h + padding)
@@ -168,7 +168,7 @@ instance Default BucketOpts where
     , _expandBuckets     = False
     }
 
-bucketed' :: BucketOpts -> [[DC]] -> DC
+bucketed' :: BucketOpts -> [[Dia]] -> Dia
 bucketed' opts buckets
   = (if opts ^. showEllipses then (||| ellipses) else id)
   . hcat' with {sep = 1}
@@ -178,36 +178,36 @@ bucketed' opts buckets
   where
     ellipses = strutX 1 ||| hcat' with {sep = 1} (replicate 3 (circle 0.5 # fc black))
 
-makeBucket :: BucketOpts -> Int -> [DC] -> DC
+makeBucket :: BucketOpts -> Int -> [Dia] -> Dia
 makeBucket opts n elts
     = (if (opts ^. showIndices) then (=== (strutY 1 === text' 5 (show n))) else id)
       (bucketDia <> wrapLayout s s elts)
   where
-    bucketDia :: DC
+    bucketDia :: Dia
     bucketDia = roundedRect s s (s / 8)
     s = opts ^. bucketSize
 
-wrapLayout :: Double -> Double -> [DC] -> DC
+wrapLayout :: Double -> Double -> [Dia] -> Dia
 wrapLayout w h = layoutGrid w h . wrap w h
 
-wrap :: Double -> Double -> [DC] -> [[DC]]
+wrap :: Double -> Double -> [Dia] -> [[Dia]]
 wrap w h [] = []
 wrap w h es = map snd this : wrap w h (map snd rest)
   where
     (this, rest) = span ((<w) . fst) esWeighted
-    esWeighted :: [(Double, DC)]
+    esWeighted :: [(Double, Dia)]
     esWeighted = snd $ mapAccumL (\w e -> let w' = w + width e in (w', (w', e))) 0 es
 
-layoutGrid :: Double -> Double -> [[DC]] -> DC
+layoutGrid :: Double -> Double -> [[Dia]] -> Dia
 layoutGrid w h es = centerY . spread unit_Y h $ map (centerX . spread unitX w) es
   where
-    spread :: R2 -> Double -> [DC] -> DC
+    spread :: R2 -> Double -> [Dia] -> Dia
     spread v total es = cat' v with {sep = (total - sum (map (extent v) es)) / (genericLength es + 1)} es
     extent v d
       = maybe 0 (negate . uncurry (-))
       $ (\f -> (-f (negateV v), f v)) <$> (appEnvelope . getEnvelope $ d)
 
-bucketed :: [[DC]] -> DC
+bucketed :: [[Dia]] -> Dia
 bucketed = bucketed' def
 
 ------------------------------------------------------------
@@ -217,8 +217,22 @@ listBuckets opts = bucketed' opts (map (:[]) . zipWith scale ([1,1,1,0.6] ++ rep
 binTreeBuckets opts
   = bucketed' opts
       ( map (map (pad 1.3 . centerXY . binTree)) allBinTrees
-      # zipWith scale [1,1,0.5, 0.2, 0.2, 0.08]
+      # zipWith scale [1,1,0.4, 0.2, 0.1, 0.05]
       )
+
+treeDef = vcat' with {catMethod = Distrib, sep = 4}
+  [ dot # named "parent"
+  , hcat' with {catMethod = Distrib, sep = 6}
+    [ subtree # named "left"
+    , subtree # named "right"
+    ]
+    # centerX
+  ]
+  # withNames ["parent", "left", "right"] (\[p,l,r] ->
+      beneath (location p ~~ location l <> location p ~~ location r)
+    )
+
+subtree = triangle 4 # scaleY 1.5 # atop (text' 3 "T") # alignT
 
 ------------------------------------------------------------
 
@@ -229,6 +243,38 @@ theGraph = graph [(0,1), (0,2), (1,3), (2,3), (2,4), (2,5), (3,5), (3,6), (6,7),
 theList = list 5 # centerXY
 
 theCycles = hcat' with {sep = 2} [cyc 5, cyc 7] # centerXY # rotateBy (1/20)
+
+------------------------------------------------------------
+
+data Struct = Struct { structShape :: Int, structVariant :: Int, structColor :: Colour Double }
+
+shape :: Int -> Located (Trail' Loop R2)
+shape 0 = circle 1
+shape 1 = circle 1 # scaleY 1.5
+shape 2 = rect 4 2
+shape n = polygon with {polyType = PolyRegular n 2}
+
+variant :: Int -> Located (Trail' Loop R2) -> Dia
+variant 0 = strokeLocLoop
+variant 1 = fc white . strokeLocLoop
+variant 2 = \t -> strokeLocLoop t # scale 0.8 <> strokeLocLoop t # fc white
+variant 3 = \t -> strokeLocLoop t # scale 0.8 # fc white <> strokeLocLoop t # fc white
+variant _ = variant 3
+
+drawStruct :: Struct -> Dia
+drawStruct (Struct shp var c) = shape shp # variant var # lc c # fc c
+
+type Species = [[Struct]]
+
+drawSpecies :: BucketOpts -> Species -> Dia
+drawSpecies opts = bucketed' opts . map (map drawStruct)
+
+mkSpecies :: Colour Double -> [Int] -> [[Struct]]
+mkSpecies c = zipWith (\i n -> [Struct i var c | var <- [0..(n-1)]]) [0..]
+
+speciesA = mkSpecies green [1,1,1,3,4,2]
+
+speciesB = mkSpecies purple [1,0,2,0,3,0]
 
 ------------------------------------------------------------
 -- misc
