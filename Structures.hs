@@ -50,6 +50,7 @@ data Atom = Atom { structShape :: Int, structVariant :: Int, structColor :: Colo
 data Struct = SDia Dia
             | SAtom Atom
             | SPair Struct Struct
+            | SMono Int Int  -- ax^b
 
 data Bucket = Bucket { _bucket :: [Struct] }
 
@@ -209,6 +210,7 @@ data BucketOpts
   , _padding       :: Maybe Double
   , _bucketDir       :: R2
   , _bucketOptsStyle :: Style R2
+  , _showX         :: Bool
   }
 
 $(makeLenses ''BucketOpts)
@@ -226,6 +228,7 @@ instance Default BucketOpts where
     , _padding           = Just 1.3
     , _bucketDir         = unitX
     , _bucketOptsStyle   = mempty
+    , _showX             = False
     }
 
 bucketed' :: BucketOpts -> [[Dia]] -> Dia
@@ -301,7 +304,7 @@ class IsBucket a where
   drawBucket :: BucketOpts -> a -> Dia
 
 instance IsBucket Bucket where
-  drawBucket opts (Bucket b) = makeBucket (opts & showIndices .~ False) 0 (padBucket opts $ map drawStruct b)
+  drawBucket opts (Bucket b) = makeBucket (opts & showIndices .~ False) 0 (padBucket opts $ map (drawStruct opts) b)
 
 instance IsBucket Dia where
   drawBucket _ d = d
@@ -315,10 +318,10 @@ instance IsBucket a => IsBucket (a, Style R2) where
 drawGrid :: IsBucket a => BucketOpts -> Grid a -> Dia
 drawGrid opts (Grid col row bs) =
   hor
-    [ drawSpecies (opts & bucketDir .~ unit_Y & showEllipses .~ False) col
+    [ drawSpecies' (opts & bucketDir .~ unit_Y & showEllipses .~ False) col
     , strutX 0
     , ver
-      [ drawSpecies (opts & bucketDir .~ unitX & showEllipses .~ False & flipIndices .~ True) row
+      [ drawSpecies' (opts & bucketDir .~ unitX & showEllipses .~ False & flipIndices .~ True) row
       , strutY 0
       , grid
       ]
@@ -336,7 +339,10 @@ drawGrid opts (Grid col row bs) =
     ver = vcat' with {sep = opts ^. bucketSep} . map alignR
 
 productGrid :: Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style R2)) -> Dia
-productGrid s1 s2 f = drawGrid with (Grid s1 s2 grid)
+productGrid = productGrid' with
+
+productGrid' :: BucketOpts -> Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style R2)) -> Dia
+productGrid' opts s1 s2 f = drawGrid opts (Grid s1 s2 grid)
   where
     grid = [ [ f ((r,c), (s1 !! r) %* (s2 !! c))
              | c <- [0..5]
@@ -344,22 +350,31 @@ productGrid s1 s2 f = drawGrid with (Grid s1 s2 grid)
            | r <- [0..5]
            ]
 
-gridHighlightDiag :: Int -> Dia
-gridHighlightDiag n = productGrid speciesA speciesB f
+gridHighlightDiag :: Int -> Species -> Species -> Dia
+gridHighlightDiag = gridHighlightDiag' with
+
+gridHighlightDiag' :: BucketOpts -> Int -> Species -> Species -> Dia
+gridHighlightDiag' opts n sp1 sp2 = productGrid' opts sp1 sp2 f
   where
     f ((r,c),b)
       | r + c == n = Just (b, highlight)
       | otherwise  = Just (b, mempty)
 
-prodSum :: Int -> Dia
-prodSum n = vcat' with {sep = 5}
-  [ gridHighlightDiag n
-  , drawSpecies (with & numBuckets .~ (n+1)) (speciesA %* speciesB)
+prodSum :: Int -> Species -> Species -> Dia
+prodSum = prodSum' with
+
+prodSum' :: BucketOpts -> Int -> Species -> Species -> Dia
+prodSum' opts n sp1 sp2 = vcat' with {sep = 5}
+  [ gridHighlightDiag' opts n sp1 sp2
+  , drawSpecies' (opts & numBuckets .~ (n+1)) (sp1 %* sp2)
     # translateX 12
   ]
 
-drawGF :: Show a => [a] -> Dia
-drawGF = bucketed . map ((:[]) . text' 8 . show)
+drawGF :: [Int] -> Dia
+drawGF = drawGF' with
+
+drawGF' :: BucketOpts -> [Int] -> Dia
+drawGF' opts = drawSpecies' opts . mkGF
 
 ------------------------------------------------------------
 
@@ -412,13 +427,19 @@ variant 2 = \t -> strokeLocLoop t # scale 0.5 <> strokeLocLoop t # fc white
 variant 3 = \t -> strokeLocLoop t # scale 0.5 # fc white <> strokeLocLoop t # fc white
 variant _ = variant 3
 
-drawStruct :: Struct -> Dia
-drawStruct (SDia d) = d
-drawStruct (SAtom (Atom shp var c)) = shape shp # variant var # lc c # fc c
-drawStruct (SPair s1 s2) = pair (drawStruct s1) (drawStruct s2)
+drawStruct :: BucketOpts -> Struct -> Dia
+drawStruct _ (SDia d) = d
+drawStruct _ (SAtom (Atom shp var c)) = shape shp # variant var # lc c # fc c
+drawStruct opts (SPair s1 s2) = pair (drawStruct opts s1) (drawStruct opts s2)
+drawStruct opts (SMono a n)
+  | opts ^. showX = (||| (strutX 0.3 ||| text' 3 (show n) # translateY 1)) . text' 6 . (++"x") . show $ a
+  | otherwise     = text' 8 (show a)
 
-drawSpecies :: BucketOpts -> Species -> Dia
-drawSpecies opts = bucketed' opts . map (map drawStruct . (^.bucket))
+drawSpecies :: Species -> Dia
+drawSpecies = drawSpecies' with
+
+drawSpecies' :: BucketOpts -> Species -> Dia
+drawSpecies' opts = bucketed' opts . map (map (drawStruct opts) . (^.bucket))
 
 mkSpecies :: Colour Double -> [Int] -> Species
 mkSpecies c = zipWith (\i n -> Bucket [SAtom (Atom i var c) | var <- [0..(n-1)]]) [0..]
@@ -428,6 +449,15 @@ speciesA = mkSpecies houghtonGold [1,1,1,3,4,2]
 speciesB = mkSpecies houghtonPurple [1,1,2,0,3,1]
 speciesOne = Bucket [SDia (square 1 # fc black)] : repeat zero
 speciesX =  zero : Bucket [SDia dot] : repeat zero
+
+mkGF :: [Int] -> Species
+mkGF  = zipWith asBucket [0..]
+  where
+    asBucket n a = Bucket [SMono a n]
+
+gf1, gf2 :: Species
+gf1 = mkGF [1..]
+gf2 = mkGF [1,1,2,5,14,42]
 
 ------------------------------------------------------------
 
@@ -440,8 +470,12 @@ class Semiring a where
 instance Semiring Bucket where
   zero = Bucket []
   one  = Bucket [SAtom (Atom 0 0 black)]
+  Bucket [SMono a1 n1] %+ Bucket [SMono a2 _] = Bucket [SMono (a1+a2) n1]  -- assume n1 == n2
   Bucket b1 %+ Bucket b2 = Bucket (b1 ++ b2)
-  Bucket b1 %* Bucket b2 = Bucket [SPair s1 s2 | s1 <- b1, s2 <- b2]
+  Bucket b1 %* Bucket b2 = Bucket [s1 %%* s2 | s1 <- b1, s2 <- b2]
+    where
+      (SMono i m) %%* (SMono j n) = SMono (i * j) (m + n)
+      s1 %%* s2 = SPair s1 s2
 
 instance Semiring a => Semiring [a] where
   zero = repeat zero
@@ -461,3 +495,4 @@ instance Semiring Int where
 hc3  = hcat' with {sep=3}
 vc3  = vcat' with {sep=3}
 vc3r = vc3 . map alignR
+p1 = pad 1.1 . centerXY
