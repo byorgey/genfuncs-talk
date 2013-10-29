@@ -226,7 +226,7 @@ dia = (binTree . toBTree $ bigTree)   -- $
 import Structures
 import Control.Lens ((&), (.~))
 
-dia = hcat' with {sep = 3} [binTreeBuckets with, text' 7 "?"]
+dia = hcat' with {sep = 3} [bucketed allBinTreesD, text' 7 "?"]
     # centerXY # pad 1.1
 \end{diagram}
 \end{center}
@@ -280,7 +280,7 @@ import Control.Lens ((&), (.~))
 
 dia =
   (vcat' with {sep = 5} . map (hcat' with {sep = 3}))
-  [ [text' 5 "T", binTreeBuckets (with & showIndices .~ False)]
+  [ [text' 5 "T", bucketed' (with & showIndices .~ False) allBinTreesD]
   , [text' 5 "F", drawSpecies (with & showIndices .~ False) speciesA]
   , [text' 5 "G", drawSpecies with speciesB]
   ]
@@ -300,7 +300,7 @@ import Structures
 import Control.Lens ((&), (.~))
 
 dia =
-  (vcat' with {sep = 3} . map alignR)
+  vc3
   [ fRow
   , gRow
   , hrule (width fgRow)
@@ -312,7 +312,7 @@ dia =
     gRow = hcat' with {sep = 3} [text' 5 "G", drawSpecies (with & showIndices .~ False) speciesB]
     fgRow = hcat' with {sep = 3}
       [ text' 5 "F + G"
-      , drawSpecies with (zipWith (++) speciesA speciesB)
+      , drawSpecies with (speciesA %+ speciesB)
       ]
 \end{diagram}
 \end{center}
@@ -325,10 +325,9 @@ dia =
       import Control.Lens ((&), (.~))
 
       dia =
-        vcat' with {sep = 3} rows
-        # centerXY # pad 1.02
+        vc3r rows # centerXY # pad 1.02
         where
-          rows = map (alignR . hcat' with {sep=3})
+          rows = hc3
             [ [text' 10 "0", bucketed' (with & showIndices .~ False) (repeat [])]
             , [text' 5 "F", drawSpecies (with & showIndices .~ False) speciesA]
             , [hrule (width (rows !! 3))]
@@ -340,25 +339,132 @@ dia =
 
 \begin{frame}[fragile]{Product = AND}
   \begin{center}
-    \begin{diagram}[width=300]
-import Structures
-import Control.Lens ((&), (.~))
+    An $(F \cdot G)$-structre is an ordered pair of an $F$-structure \emph{and}
+    a $G$-structure.
+    \bigskip
 
-dia =
-  (vcat' with {sep = 3} . map alignR)
-  [ tRow
-  , lRow
-  , hrule (width lRow)
-  , tlRow
-  ]
-  # centerXY # pad 1.02
-  where
-    tRow = hcat' with {sep = 3} [text' 5 "T", binTreeBuckets (with & showIndices .~ False)]
-    lRow = hcat' with {sep = 3} [text' 5 "L", listBuckets (with & showIndices .~ False)]
-    tlRow = hcat' with {sep = 3}
-      [ text' 5 "T • L"
-      , bucketed (repeat [])  -- XXX todo!
-      ]
+    \begin{diagram}[width=200]
+      import Structures
+      dia = pair (binTree treeA) (binTree treeB)
+        # centerXY # pad 1.1
+    \end{diagram}
+    \[ T \cdot T \]
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Building trees with products}
+  \begin{center}
+    \begin{diagram}[width=250]
+      import Structures
+      dia = pair dot (pair (binTree treeA) (binTree treeB))
+        # centerXY # pad 1.1
+    \end{diagram}
+    \[ X \cdot (T \cdot T) \]
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Building trees with products}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+      import Diagrams.TwoD.Layout.Tree
+
+      pp = pair dot (pair (binTree treeA) (binTree treeB))
+
+      dia = hcat' with {sep = 10}
+        [ pp
+        , text' 6 "≅"
+        , binTree (BNode () treeA treeB) # centerY
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=200]
+      import Structures
+
+      dia = (hcat' with {sep=1} . map alignB)
+        [ drawBucket with (speciesA !! 3)
+        , vcat' with {sep=1}
+          [ drawBucket with (speciesB !! 2)
+          , drawBucket with ((speciesA !! 3) %* (speciesB !! 2))
+          ]
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      import Structures
+
+      dia = productGrid speciesA speciesB (const Nothing)
+          # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      import Structures
+
+      dia = productGrid speciesA speciesB f # centerXY # pad 1.1
+        where
+          f ((3,2),b) = Just (b, mempty)
+          f _         = Nothing
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      {-# LANGUAGE TupleSections #-}
+      import Structures
+      dia = productGrid speciesA speciesB (Just . (,mempty) . snd) # centerXY # pad 1.1
+    \end{diagram}
+    %$
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      import Structures
+      dia = prodSum 0 # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      import Structures
+      dia = prodSum 1 # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      import Structures
+      dia = prodSum 2 # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Computing products}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      import Structures
+      dia = prodSum 3 # centerXY # pad 1.1
     \end{diagram}
   \end{center}
 \end{frame}
@@ -368,15 +474,20 @@ dia =
     \begin{diagram}[width=300]
       import Structures
 
-      dia = hcat' with {sep=3} [text' 10 "1", bucketed ([nil] : repeat [])]
+      dia = hc3 [text' 10 "1", drawSpecies with speciesOne]
         # centerXY # pad 1.1
     \end{diagram}
+  \end{center}
+\end{frame}
 
-    \bigskip
+\begin{frame}[fragile]{One}
+  \begin{center}
+    \begin{diagram}[width=300,height=200]
+      {-# LANGUAGE TupleSections #-}
+      import Structures
 
-    % XXX draw isomorphism
-
-    \[ F \cdot 1 = 1 \cdot F = F \]
+      dia = productGrid speciesOne speciesB (Just . (,mempty) . snd) # centerXY # pad 1.1
+    \end{diagram}
   \end{center}
 \end{frame}
 
@@ -385,12 +496,153 @@ dia =
     \begin{diagram}[width=300]
       import Structures
 
-      dia = hcat' with {sep=3} [text' 10 "X", bucketed ([] : [dot] : repeat [])]
+      dia = hc3 [text' 10 "X", drawSpecies with speciesX]
         # centerXY # pad 1.1
     \end{diagram}
   \end{center}
 \end{frame}
 
+% \begin{frame}[fragile]{Singleton}
+%   \begin{center}
+%     \begin{diagram}[width=300,height=200]
+%       {-# LANGUAGE TupleSections #-}
+%       import Structures
+
+%       dia = productGrid speciesX speciesB (Just . (,mempty) . snd) # centerXY # pad 1.1
+%     \end{diagram}
+%   \end{center}
+% \end{frame}
+
+% \begin{frame}{Other things}
+%   \begin{itemize}
+%   \item Other primitive species: bags, cycles, \dots
+%   \item Other operations: composition, Cartesian product, \dots
+%   \end{itemize}
+% \end{frame}
+
+\section{Part 3: Generating Functions}
+\label{sec:gen-funcs}
+
+\begin{frame}{Generating functions}
+  \begin{center}
+    ``A generating function is a clothesline
+    on which we hang up a sequence of numbers for display.''  ---
+    Herbert Wilf
+
+    \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Generating functions}
+  \begin{center}
+    \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
+
+    \bigskip
+
+    \begin{diagram}[width=300]
+      import Structures
+
+      dia = hc3
+        [ text' 5 "f"
+        , bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Species and generating functions}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+      import Control.Lens ((&), (.~))
+
+      dia =
+        (vc3r . map hc3)
+        [ [text' 8 "T", bucketed' (with & showIndices .~ False) allBinTreesD ]
+        , [text' 8 "T(x)", drawGF [1,1,2,5,14,42]]
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Species and generating functions: 0}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+      import Control.Lens ((&), (.~))
+
+      dia =
+        (vc3r . map hc3)
+        [ [text' 8 "0", drawSpecies (with & showIndices .~ False) (repeat zero)]
+        , [text' 8 "0(x)", drawGF (repeat 0)]
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+
+    \[ 0(x) = 0 + 0x + 0x^2 + 0x^3 + 0x^4 + \dots = 0 \]
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Species and generating functions: 1}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+      import Control.Lens ((&), (.~))
+
+      dia =
+        (vc3r . map hc3)
+        [ [text' 8 "1", drawSpecies (with & showIndices .~ False) speciesOne]
+        , [text' 8 "1(x)", drawGF (1 : repeat 0)]
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+
+    \[ 1(x) = 1 + 0x + 0x^2 + 0x^3 + 0x^4 + \dots = 1 \]
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Species and generating functions: $X$}
+  \begin{center}
+    \begin{diagram}[width=300]
+      import Structures
+      import Control.Lens ((&), (.~))
+
+      dia =
+        (vc3r . map hc3)
+        [ [text' 8 "X", drawSpecies (with & showIndices .~ False) speciesX]
+        , [text' 8 "X(x)", drawGF (0 : 1 : repeat 0)]
+        ]
+        # centerXY # pad 1.1
+    \end{diagram}
+
+    \[ X(x) = 0 + 1x + 0x^2 + 0x^3 + 0x^4 + \dots = x \]
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Species and generating functions: sum}
+  %% XXX
+  foo
+\end{frame}
+
+\begin{frame}[fragile]{Species and generating functions: product}
+  %% XXX
+  bar
+\end{frame}
+
+\begin{frame}{Trees, again}
+  \[ T = 1 + X \cdot T \cdot T \]
+
+  \onslide<2>
+
+  \[ T(x) = 1 + x T(x)^2 \]
+\end{frame}
+
+\begin{frame}
+  \[ x T(x)^2 - T(x) + 1 = 0 \]
+  \[ T(x) = \frac{1 \pm \sqrt{1 - 4x}}{2x} \]
+\end{frame}
 
 \end{document}
 
@@ -459,96 +711,6 @@ dia =
 % \begin{frame}{Examples}
 
 % \end{frame}
-
-% \begin{frame}{Other things}
-%   \begin{itemize}
-%   \item Other primitive species: bags, cycles, \dots
-%   \item Other operations: composition, Cartesian product, \dots
-%   \end{itemize}
-% \end{frame}
-
-% \section{Part 3: Generating Functions}
-% \label{sec:gen-funcs}
-
-% \begin{frame}{Generating functions}
-%   \begin{center}
-%     %% XXX ceci n'est pas un...
-%     \onslide<2-> Generating functions are not functions.
-
-%     \bigskip
-
-%     \onslide<3->``A generating function is a clothesline
-%     on which we hang up a sequence of numbers for display.''  ---
-%     Herbert Wilf
-
-%     \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
-%   \end{center}
-% \end{frame}
-
-% \begin{frame}[fragile]{Generating functions}
-%   \begin{center}
-%     \[ f(x) = 1 + x + 2x^2 + 5x^3 + 14x^4 + 42x^5 + \dots \]
-
-%     \bigskip
-
-%     \begin{diagram}[width=300]
-%       import Structures
-
-%       dia = hcat' with {sep=3}
-%         [ text' 5 "f"
-%         , bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])
-%         ]
-%         # centerXY # pad 1.1
-%     \end{diagram}
-%   \end{center}
-% \end{frame}
-
-% \begin{frame}[fragile]{Species and generating functions}
-%   \begin{center}
-%     \begin{diagram}[width=300]
-%       import Structures
-%       import Control.Lens ((&), (.~))
-
-%       dia =
-%         (vcat' with {sep=3} . map alignR)
-%         [ hcat' with {sep=3} [text' 8 "T", binTreeBuckets (with & showIndices .~ False)]
-%         , hcat' with {sep=3} [text' 8 "T(x)", bucketed (map ((:[]) . text' 8 . show) [1,1,2,5,14,42])]
-%         ]
-%         # centerXY # pad 1.1
-%     \end{diagram}
-%   \end{center}
-% \end{frame}
-
-% % \begin{frame}{Examples}
-% %   $X(x) = x$
-% %   $0(x) = 0$
-% %   $1(x) = 1$
-% %   $L(x) = 1 + x + x^2 + x^3 + \dots$
-% % \end{frame}
-
-% % \begin{frame}{Sum}
-% %   \[ ||(F+G)_n|| = ||F_n|| + ||G_n|| \]
-
-% %   so
-
-% %   \[ (F+G)(x) = F(x) + G(x) \]
-% % \end{frame}
-
-% % \begin{frame}{Product}
-% %   \[ ||(FG)_n|| = \sum_{0 \leq k \leq n} ||F_k|| ||G_{n-k}|| \]
-
-% %   so
-
-% %   \[ (FG)(x) = F(x) G(x) \]
-
-% %   XXX add some pictures
-% % \end{frame}
-
-% % \begin{frame}{Example}
-% %   \[ T = 1 + X \cdot T \cdot T \]
-
-% %   so etc. XXX
-% % \end{frame}
 
 % \begin{frame}{}
 

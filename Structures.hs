@@ -1,40 +1,78 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
 
 module Structures where
 
+-- import Debug.Trace
+
 import           Diagrams.Backend.Postscript
-import           Diagrams.Prelude
+import           Diagrams.Prelude hiding (trace)
 import           Diagrams.TwoD.Layout.Tree
 import           Graphics.SVGFonts
+import           Data.Colour.SRGB
 
 import           Control.Applicative         ((<|>))
 import           Control.Arrow               (second)
-import           Control.Lens                (makeLenses, (^.))
+import           Control.Lens                (makeLenses, (^.), (&), (.~))
 import           Data.Default.Class
-import           Data.List                   (genericLength, mapAccumL, nub)
+import           Data.List                   (genericLength, mapAccumL, nub, foldl', inits)
 import qualified Data.Map                    as M
-import           Data.Maybe                  (fromMaybe)
 import           Data.Tree
 import           Physics.ForceLayout
 import           Text.Parsec                 (between, char, many, runParser)
 import           Text.Parsec.String          (Parser)
 
+------------------------------------------------------------
+-- misc
+
+text' :: Double -> String -> Dia
+text' d t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False d d ) # fc black # lw 0
+
+maximum0 :: (Num c, Ord c) => [c] -> c
+maximum0 = maximum . (0:)
+
+highlight :: (Monoid c, HasStyle c) => c
+highlight = lc houghtonPurple . lw 0.5 $ mempty
+
+houghtonPurple, houghtonGold :: Colour Double
+houghtonPurple = sRGB24 0x2c 0x2a 0x6e
+houghtonGold   = sRGB24 0xca 0xb7 0x78
+
+--------------------------------------------------
+-- Types
+
 type Dia = Diagram Postscript R2
 
+data Atom = Atom { structShape :: Int, structVariant :: Int, structColor :: Colour Double }
+data Struct = SDia Dia
+            | SAtom Atom
+            | SPair Struct Struct
+
+data Bucket = Bucket { _bucket :: [Struct] }
+
+makeLenses ''Bucket
+
+type Species = [Bucket]
+
+------------------------------------------------------------
+
 nil :: Dia
-nil = square 1 # fc white
+nil = square 1.5 # fc white
 
 dot :: Dia
-dot = circle 1 # fc blue # lw 0
+dot = circle 1 # fc houghtonPurple # lw 0
 
 list :: Int -> Dia
 list 0 = nil
 list n = dots <> rule
   where
-    dots = hcat' with {sep = 2} (replicate n dot)
+    dots = hcat' with {sep = 2} (replicate n dot ++ [nil])
     rule = hrule (width dots) # translateXTo dots
 
+translateXTo :: (Transformable b, Alignable b, Enveloped a, V a ~ R2, V b ~ R2) => a -> b -> b
 translateXTo ref mv = alignL mv # maybe id translateX (fst <$> extentX ref)
 
 tree :: Tree () -> Dia
@@ -115,32 +153,42 @@ pair d1 d2 =
   [ d1 # centerXY <> halfBox (w1 + padding) (h + padding)
   , d2 # centerXY <> halfBox (w2 + padding) (h + padding) # reflectX
   ]
+  # lc black # lw 0.01
   where
     w1 = width d1
     w2 = width d2
     h  = max (height d1) (height d2)
     padding = maximum [w1 * padFactor, w2 * padFactor, h * padFactor]
-    padFactor = 0.2
-    halfBox w h = roundedRect' w h with { radiusTL = min w h / 8, radiusBL = min w h / 8 }
+    padFactor = 0.3
+    halfBox x y = roundedRect' x y with { radiusTL = min x y / 8, radiusBL = min x y / 8 }
 
 allBinTrees :: [[BTree ()]]
 allBinTrees = map binTreesK [0..]
   where
+    binTreesK :: Int -> [BTree ()]
     binTreesK 0 = [Empty]
     binTreesK n = [ BNode () t1 t2 | k <- [(n-1), (n-2) .. 0], t1 <- binTreesK k, t2 <- binTreesK (n - 1 - k)]
+
+allBinTreesD :: [[Dia]]
+allBinTreesD = map (map binTree) allBinTrees
 
 allTrees :: [[Tree ()]]
 allTrees = map treesK [0..]
   where
+    treesK :: Int -> [Tree ()]
     treesK 0 = []
     treesK n = [ Node () ts
                | part <- oPartitions (n-1)
                , ts <- mapM treesK part
                ]
 
+oPartitions :: (Enum a, Num a, Ord a) => a -> [[a]]
 oPartitions 0 = [[]]
 oPartitions n | n < 0 = []
 oPartitions n = concat [ map (k:) (oPartitions (n-k)) | k <- [n, n-1 .. 1] ]
+
+allListsD :: [[Dia]]
+allListsD = map ((:[]) . list) [0..]
 
 ------------------------------------------------------------
 -- Bucketing
@@ -153,8 +201,14 @@ data BucketOpts
   { _numBuckets    :: Int
   , _showEllipses  :: Bool
   , _showIndices   :: Bool
+  , _flipIndices   :: Bool
   , _bucketSize    :: Double
+  , _bucketSep     :: Double
   , _expandBuckets :: Bool
+  , _shrinkFactor  :: Maybe Double
+  , _padding       :: Maybe Double
+  , _bucketDir       :: R2
+  , _bucketOptsStyle :: Style R2
   }
 
 $(makeLenses ''BucketOpts)
@@ -164,45 +218,76 @@ instance Default BucketOpts where
     { _numBuckets        = 6
     , _showEllipses      = True
     , _showIndices       = True
+    , _flipIndices       = False
     , _bucketSize        = 10
+    , _bucketSep         = 1
     , _expandBuckets     = False
+    , _shrinkFactor      = Just 0.8
+    , _padding           = Just 1.3
+    , _bucketDir         = unitX
+    , _bucketOptsStyle   = mempty
     }
 
 bucketed' :: BucketOpts -> [[Dia]] -> Dia
 bucketed' opts buckets
-  = (if opts ^. showEllipses then (||| ellipses) else id)
-  . hcat' with {sep = 1}
+  = (if opts ^. showEllipses then (\d -> cat' (opts ^. bucketDir) (with {sep = opts^.bucketSep}) (d:ellipses)) else id)
+  . cat' (opts ^. bucketDir) with {sep = opts ^. bucketSep}
   . take (opts ^. numBuckets)
   . zipWith (makeBucket opts) [0..]
+  . map (padBucket opts)
   $ buckets
   where
-    ellipses = strutX 1 ||| hcat' with {sep = 1} (replicate 3 (circle 0.5 # fc black))
+    ellipses = replicate 3 (circle 0.5 # fc black)
+
+padBucket :: BucketOpts -> [Dia] -> [Dia]
+padBucket opts = maybe id (\p -> (map (pad p . centerXY))) (opts ^. padding)
+
+perp :: R2 -> R2
+perp = rotateBy (-1/4)
 
 makeBucket :: BucketOpts -> Int -> [Dia] -> Dia
 makeBucket opts n elts
-    = (if (opts ^. showIndices) then (=== (strutY 1 === text' 5 (show n))) else id)
-      (bucketDia <> wrapLayout s s elts)
+    = (if (opts ^. showIndices) then (\d -> cat' iDir (with {sep=opts ^. bucketSep}) [d,text' 5 (show n)]) else id)
+      (wrapLayout (opts ^. shrinkFactor) s s elts <> bucketDia)
   where
     bucketDia :: Dia
     bucketDia = roundedRect s s (s / 8)
+      # applyStyle (opts ^. bucketOptsStyle)
     s = opts ^. bucketSize
+    iDir = (if opts^.flipIndices then negateV else id) . perp $ opts^.bucketDir
 
-wrapLayout :: Double -> Double -> [Dia] -> Dia
-wrapLayout w h = layoutGrid w h . wrap w h
+wrapLayout :: Maybe Double -> Double -> Double -> [Dia] -> Dia
+wrapLayout Nothing w h = layoutGrid w h . wrap w
+wrapLayout (Just shrink) w h = go
+  where
+    go ds
+      | {- traceShow totalH -} totalH <= h = layoutGrid w h dss
+      | otherwise = go (map (scale shrink) ds)
+      where
+        dss = wrap w ds
+        totalH = sum . map (maximum0 . map height) $ dss
 
-wrap :: Double -> Double -> [Dia] -> [[Dia]]
-wrap w h [] = []
-wrap w h es = map snd this : wrap w h (map snd rest)
+wrap :: Double -> [Dia] -> [[Dia]]
+wrap w ds = wrap' w ds'
+  where
+    maxW = maximum0 . map width $ ds
+    ds'
+      | maxW >= w = map (scale (0.99 * (w / maxW))) ds
+      | otherwise = ds
+
+wrap' :: Double -> [Dia] -> [[Dia]]
+wrap' _ [] = []
+wrap' w es = map snd this : wrap' w (map snd rest)
   where
     (this, rest) = span ((<w) . fst) esWeighted
     esWeighted :: [(Double, Dia)]
-    esWeighted = snd $ mapAccumL (\w e -> let w' = w + width e in (w', (w', e))) 0 es
+    esWeighted = snd $ mapAccumL (\wcur ecur -> let w' = wcur + width ecur in (w', (w', ecur))) 0 es
 
 layoutGrid :: Double -> Double -> [[Dia]] -> Dia
 layoutGrid w h es = centerY . spread unit_Y h $ map (centerX . spread unitX w) es
   where
     spread :: R2 -> Double -> [Dia] -> Dia
-    spread v total es = cat' v with {sep = (total - sum (map (extent v) es)) / (genericLength es + 1)} es
+    spread v total ds = cat' v with {sep = (total - sum (map (extent v) ds)) / (genericLength ds + 1)} ds
     extent v d
       = maybe 0 (negate . uncurry (-))
       $ (\f -> (-f (negateV v), f v)) <$> (appEnvelope . getEnvelope $ d)
@@ -210,16 +295,75 @@ layoutGrid w h es = centerY . spread unit_Y h $ map (centerX . spread unitX w) e
 bucketed :: [[Dia]] -> Dia
 bucketed = bucketed' def
 
+data Grid a = Grid Species Species [[a]]
+
+class IsBucket a where
+  drawBucket :: BucketOpts -> a -> Dia
+
+instance IsBucket Bucket where
+  drawBucket opts (Bucket b) = makeBucket (opts & showIndices .~ False) 0 (padBucket opts $ map drawStruct b)
+
+instance IsBucket Dia where
+  drawBucket _ d = d
+
+instance IsBucket a => IsBucket (Maybe a) where
+  drawBucket opts = maybe (strutX (opts^.bucketSize) <> strutY (opts^.bucketSize)) (drawBucket opts)
+
+instance IsBucket a => IsBucket (a, Style R2) where
+  drawBucket opts (b,sty) = drawBucket opts b # applyStyle sty
+
+drawGrid :: IsBucket a => BucketOpts -> Grid a -> Dia
+drawGrid opts (Grid col row bs) =
+  hor
+    [ drawSpecies (opts & bucketDir .~ unit_Y & showEllipses .~ False) col
+    , strutX 0
+    , ver
+      [ drawSpecies (opts & bucketDir .~ unitX & showEllipses .~ False & flipIndices .~ True) row
+      , strutY 0
+      , grid
+      ]
+    ]
+  where
+    grid
+      = bs
+      # map (take n)
+      # take n
+      # map (map (drawBucket opts))
+      # map hor
+      # vcat' with {sep = opts ^. bucketSep}
+    n = opts ^. numBuckets
+    hor = hcat' with {sep = opts ^. bucketSep} . map alignB
+    ver = vcat' with {sep = opts ^. bucketSep} . map alignR
+
+productGrid :: Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style R2)) -> Dia
+productGrid s1 s2 f = drawGrid with (Grid s1 s2 grid)
+  where
+    grid = [ [ f ((r,c), (s1 !! r) %* (s2 !! c))
+             | c <- [0..5]
+             ]
+           | r <- [0..5]
+           ]
+
+gridHighlightDiag :: Int -> Dia
+gridHighlightDiag n = productGrid speciesA speciesB f
+  where
+    f ((r,c),b)
+      | r + c == n = Just (b, highlight)
+      | otherwise  = Just (b, mempty)
+
+prodSum :: Int -> Dia
+prodSum n = vcat' with {sep = 5}
+  [ gridHighlightDiag n
+  , drawSpecies (with & numBuckets .~ (n+1)) (speciesA %* speciesB)
+    # translateX 12
+  ]
+
+drawGF :: Show a => [a] -> Dia
+drawGF = bucketed . map ((:[]) . text' 8 . show)
+
 ------------------------------------------------------------
 
-listBuckets opts = bucketed' opts (map (:[]) . zipWith scale ([1,1,1,0.6] ++ repeat 0.4) . map list $ [0..])
-
-binTreeBuckets opts
-  = bucketed' opts
-      ( map (map (pad 1.3 . centerXY . binTree)) allBinTrees
-      # zipWith scale [1,1,0.4, 0.2, 0.1, 0.05]
-      )
-
+treeDef :: Dia
 treeDef = vcat' with {catMethod = Distrib, sep = 4}
   [ dot # named "parent"
   , hcat' with {catMethod = Distrib, sep = 6}
@@ -232,51 +376,88 @@ treeDef = vcat' with {catMethod = Distrib, sep = 4}
       beneath (location p ~~ location l <> location p ~~ location r)
     )
 
+subtree :: Dia
 subtree = triangle 4 # scaleY 1.5 # atop (text' 3 "T") # alignT
 
 ------------------------------------------------------------
 
+theTree :: Dia
 theTree = tree (parseTree "((())()((()()())()(()())))") # centerXY
 
+treeA, treeB :: BTree ()
+treeA = (allBinTrees !! 3 !! 2)
+treeB = (allBinTrees !! 5 !! 22)
+
+theGraph :: Dia
 theGraph = graph [(0,1), (0,2), (1,3), (2,3), (2,4), (2,5), (3,5), (3,6), (6,7), (6,8)] # centerXY
 
+theList :: Dia
 theList = list 5 # centerXY
 
+theCycles :: Dia
 theCycles = hcat' with {sep = 2} [cyc 5, cyc 7] # centerXY # rotateBy (1/20)
 
 ------------------------------------------------------------
 
-data Struct = Struct { structShape :: Int, structVariant :: Int, structColor :: Colour Double }
-
 shape :: Int -> Located (Trail' Loop R2)
-shape 0 = circle 1
-shape 1 = circle 1 # scaleY 1.5
+shape 0 = square 1.5
+shape 1 = circle 1
 shape 2 = rect 4 2
 shape n = polygon with {polyType = PolyRegular n 2}
 
 variant :: Int -> Located (Trail' Loop R2) -> Dia
 variant 0 = strokeLocLoop
 variant 1 = fc white . strokeLocLoop
-variant 2 = \t -> strokeLocLoop t # scale 0.8 <> strokeLocLoop t # fc white
-variant 3 = \t -> strokeLocLoop t # scale 0.8 # fc white <> strokeLocLoop t # fc white
+variant 2 = \t -> strokeLocLoop t # scale 0.5 <> strokeLocLoop t # fc white
+variant 3 = \t -> strokeLocLoop t # scale 0.5 # fc white <> strokeLocLoop t # fc white
 variant _ = variant 3
 
 drawStruct :: Struct -> Dia
-drawStruct (Struct shp var c) = shape shp # variant var # lc c # fc c
-
-type Species = [[Struct]]
+drawStruct (SDia d) = d
+drawStruct (SAtom (Atom shp var c)) = shape shp # variant var # lc c # fc c
+drawStruct (SPair s1 s2) = pair (drawStruct s1) (drawStruct s2)
 
 drawSpecies :: BucketOpts -> Species -> Dia
-drawSpecies opts = bucketed' opts . map (map drawStruct)
+drawSpecies opts = bucketed' opts . map (map drawStruct . (^.bucket))
 
-mkSpecies :: Colour Double -> [Int] -> [[Struct]]
-mkSpecies c = zipWith (\i n -> [Struct i var c | var <- [0..(n-1)]]) [0..]
+mkSpecies :: Colour Double -> [Int] -> Species
+mkSpecies c = zipWith (\i n -> Bucket [SAtom (Atom i var c) | var <- [0..(n-1)]]) [0..]
 
-speciesA = mkSpecies green [1,1,1,3,4,2]
-
-speciesB = mkSpecies purple [1,0,2,0,3,0]
+speciesA, speciesB, speciesOne, speciesX :: Species
+speciesA = mkSpecies houghtonGold [1,1,1,3,4,2]
+speciesB = mkSpecies houghtonPurple [1,1,2,0,3,1]
+speciesOne = Bucket [SDia (square 1 # fc black)] : repeat zero
+speciesX =  zero : Bucket [SDia dot] : repeat zero
 
 ------------------------------------------------------------
--- misc
 
-text' d t = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False d d ) # fc black # lw 0
+class Semiring a where
+  zero :: a
+  one  :: a
+  (%+) :: a -> a -> a
+  (%*) :: a -> a -> a
+
+instance Semiring Bucket where
+  zero = Bucket []
+  one  = Bucket [SAtom (Atom 0 0 black)]
+  Bucket b1 %+ Bucket b2 = Bucket (b1 ++ b2)
+  Bucket b1 %* Bucket b2 = Bucket [SPair s1 s2 | s1 <- b1, s2 <- b2]
+
+instance Semiring a => Semiring [a] where
+  zero = repeat zero
+  one  = one : repeat zero
+  (%+) = zipWith (%+)
+  l1 %* l2 = map (foldl' (%+) zero . zipWith (%*) l1) . map reverse . tail . inits $ l2
+
+instance Semiring Int where
+  zero = 0
+  one  = 1
+  (%+) = (+)
+  (%*) = (*)
+
+--------------------------------------------------
+-- misc util
+
+hc3  = hcat' with {sep=3}
+vc3  = vcat' with {sep=3}
+vc3r = vc3 . map alignR
