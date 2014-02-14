@@ -1,24 +1,25 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TypeSynonymInstances      #-}
 
 module Structures where
 
 -- import Debug.Trace
 
+import           Data.Colour.SRGB
 import           Diagrams.Backend.Postscript
-import           Diagrams.Prelude hiding (trace)
+import           Diagrams.Prelude            hiding (trace)
 import           Diagrams.TwoD.Layout.Tree
 import           Graphics.SVGFonts
-import           Data.Colour.SRGB
 
 import           Control.Applicative         ((<|>))
 import           Control.Arrow               (second)
-import           Control.Lens                (makeLenses, (^.), (&), (.~))
+import           Control.Lens                (makeLenses, (^.))
 import           Data.Default.Class
-import           Data.List                   (genericLength, mapAccumL, nub, foldl', inits)
+import           Data.List                   (foldl', genericLength, inits,
+                                              mapAccumL, nub)
 import qualified Data.Map                    as M
 import           Data.Tree
 import           Physics.ForceLayout
@@ -70,15 +71,15 @@ list :: Int -> Dia
 list 0 = nil
 list n = dots <> rule
   where
-    dots = hcat' with {sep = 2} (replicate n dot ++ [nil])
+    dots = hcat' (with & sep .~ 2) (replicate n dot ++ [nil])
     rule = hrule (width dots) # translateXTo dots
 
-translateXTo :: (Transformable b, Alignable b, Enveloped a, V a ~ R2, V b ~ R2) => a -> b -> b
+translateXTo :: (Transformable b, Alignable b, HasOrigin b, Enveloped a, V a ~ R2, V b ~ R2) => a -> b -> b
 translateXTo ref mv = alignL mv # maybe id translateX (fst <$> extentX ref)
 
 tree :: Tree () -> Dia
 tree =
-  renderTree (const dot) (~~) . symmLayout' with { slHSep = 4, slVSep = 4 }
+  renderTree (const dot) (~~) . symmLayout' (with & slHSep .~ 4 & slVSep .~ 4)
 
 treeParser :: Parser (Tree ())
 treeParser = Node () <$> between (char '(') (char ')') (many treeParser)
@@ -102,10 +103,9 @@ parseBTree s = case runParser bTreeParser () "" s of
 
 graph :: [(Int,Int)] -> Dia
 graph es = drawEnsemble es $
-           forceLayout (FLOpts { damping     = 0.8
-                               , energyLimit = Just 0.001
-                               , stepLimit   = Nothing
-                               }
+           forceLayout (with & damping     .~ 0.8
+                             & energyLimit .~ Just 0.001
+                             & stepLimit   .~ Nothing
                        )
            ens
   where
@@ -130,7 +130,7 @@ cyc 0 = mempty
 cyc 1 = dot
 cyc n
   = mconcat
-    [ position (zip (polygon with { polyType = PolyRegular n r }) (repeat dot))
+    [ position (zip (polygon (with & polyType .~ PolyRegular n r )) (repeat dot))
     , circle r
     ]
   where
@@ -144,7 +144,7 @@ binTree :: BTree () -> Dia
 binTree Empty = nil
 binTree t
   = renderTree (maybe nil (const dot)) (~~)
-  . symmLayout' with { slHSep = 5, slVSep = 4 }
+  . symmLayout' (with & slHSep .~ 5 & slVSep .~ 4)
   . decorateLeaves
   $ t
 
@@ -161,7 +161,7 @@ pair d1 d2 =
     h  = max (height d1) (height d2)
     padding = maximum [w1 * padFactor, w2 * padFactor, h * padFactor]
     padFactor = 0.3
-    halfBox x y = roundedRect' x y with { radiusTL = min x y / 8, radiusBL = min x y / 8 }
+    halfBox x y = roundedRect' x y (with & radiusTL .~ min x y / 8 & radiusBL .~ min x y / 8 )
 
 allBinTrees :: [[BTree ()]]
 allBinTrees = map binTreesK [0..]
@@ -199,18 +199,18 @@ allListsD = map ((:[]) . list) [0..]
 
 data BucketOpts
   = BucketOpts
-  { _numBuckets    :: Int
-  , _showEllipses  :: Bool
-  , _showIndices   :: Bool
-  , _flipIndices   :: Bool
-  , _bucketSize    :: Double
-  , _bucketSep     :: Double
-  , _expandBuckets :: Bool
-  , _shrinkFactor  :: Maybe Double
-  , _padding       :: Maybe Double
+  { _numBuckets      :: Int
+  , _showEllipses    :: Bool
+  , _showIndices     :: Bool
+  , _flipIndices     :: Bool
+  , _bucketSize      :: Double
+  , _bucketSep       :: Double
+  , _expandBuckets   :: Bool
+  , _shrinkFactor    :: Maybe Double
+  , _padding         :: Maybe Double
   , _bucketDir       :: R2
   , _bucketOptsStyle :: Style R2
-  , _showX         :: Bool
+  , _showX           :: Bool
   }
 
 $(makeLenses ''BucketOpts)
@@ -233,8 +233,8 @@ instance Default BucketOpts where
 
 bucketed' :: BucketOpts -> [[Dia]] -> Dia
 bucketed' opts buckets
-  = (if opts ^. showEllipses then (\d -> cat' (opts ^. bucketDir) (with {sep = opts^.bucketSep}) (d:ellipses)) else id)
-  . cat' (opts ^. bucketDir) with {sep = opts ^. bucketSep}
+  = (if opts ^. showEllipses then (\d -> cat' (opts ^. bucketDir) (with & sep .~ opts^.bucketSep) (d:ellipses)) else id)
+  . cat' (opts ^. bucketDir) (with & sep .~ opts ^. bucketSep)
   . take (opts ^. numBuckets)
   . zipWith (makeBucket opts) [0..]
   . map (padBucket opts)
@@ -250,7 +250,7 @@ perp = rotateBy (-1/4)
 
 makeBucket :: BucketOpts -> Int -> [Dia] -> Dia
 makeBucket opts n elts
-    = (if (opts ^. showIndices) then (\d -> cat' iDir (with {sep=opts ^. bucketSep}) [d,text' 5 (show n)]) else id)
+    = (if (opts ^. showIndices) then (\d -> cat' iDir (with & sep.~opts ^. bucketSep) [d,text' 5 (show n)]) else id)
       (wrapLayout (opts ^. shrinkFactor) s s elts <> bucketDia)
   where
     bucketDia :: Dia
@@ -290,7 +290,7 @@ layoutGrid :: Double -> Double -> [[Dia]] -> Dia
 layoutGrid w h es = centerY . spread unit_Y h $ map (centerX . spread unitX w) es
   where
     spread :: R2 -> Double -> [Dia] -> Dia
-    spread v total ds = cat' v with {sep = (total - sum (map (extent v) ds)) / (genericLength ds + 1)} ds
+    spread v total ds = cat' v (with & sep .~ (total - sum (map (extent v) ds)) / (genericLength ds + 1)) ds
     extent v d
       = maybe 0 (negate . uncurry (-))
       $ (\f -> (-f (negateV v), f v)) <$> (appEnvelope . getEnvelope $ d)
@@ -333,10 +333,10 @@ drawGrid opts (Grid col row bs) =
       # take n
       # map (map (drawBucket opts))
       # map hor
-      # vcat' with {sep = opts ^. bucketSep}
+      # vcat' (with & sep .~ opts ^. bucketSep)
     n = opts ^. numBuckets
-    hor = hcat' with {sep = opts ^. bucketSep} . map alignB
-    ver = vcat' with {sep = opts ^. bucketSep} . map alignR
+    hor = hcat' (with & sep .~ opts ^. bucketSep) . map alignB
+    ver = vcat' (with & sep .~ opts ^. bucketSep) . map alignR
 
 productGrid :: Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style R2)) -> Dia
 productGrid = productGrid' with
@@ -364,7 +364,7 @@ prodSum :: Int -> Species -> Species -> Dia
 prodSum = prodSum' with
 
 prodSum' :: BucketOpts -> Int -> Species -> Species -> Dia
-prodSum' opts n sp1 sp2 = vcat' with {sep = 5}
+prodSum' opts n sp1 sp2 = vcat' (with & sep .~ 5)
   [ gridHighlightDiag' opts n sp1 sp2
   , drawSpecies' (opts & numBuckets .~ (n+1)) (sp1 %* sp2)
     # translateX 12
@@ -379,9 +379,9 @@ drawGF' opts = drawSpecies' opts . mkGF
 ------------------------------------------------------------
 
 treeDef :: Dia
-treeDef = vcat' with {catMethod = Distrib, sep = 4}
+treeDef = vcat' (with & catMethod .~ Distrib & sep .~ 4)
   [ dot # named "parent"
-  , hcat' with {catMethod = Distrib, sep = 6}
+  , hcat' (with & catMethod .~ Distrib & sep .~ 6)
     [ subtree # named "left"
     , subtree # named "right"
     ]
@@ -410,7 +410,7 @@ theList :: Dia
 theList = list 5 # centerXY
 
 theCycles :: Dia
-theCycles = hcat' with {sep = 2} [cyc 5, cyc 7] # centerXY # rotateBy (1/20)
+theCycles = hcat' (with & sep .~ 2) [cyc 5, cyc 7] # centerXY # rotateBy (1/20)
 
 ------------------------------------------------------------
 
@@ -418,7 +418,7 @@ shape :: Int -> Located (Trail' Loop R2)
 shape 0 = square 1.5
 shape 1 = circle 1
 shape 2 = rect 4 2
-shape n = polygon with {polyType = PolyRegular n 2}
+shape n = polygon (with & polyType .~ PolyRegular n 2)
 
 variant :: Int -> Located (Trail' Loop R2) -> Dia
 variant 0 = strokeLocLoop
@@ -492,7 +492,7 @@ instance Semiring Int where
 --------------------------------------------------
 -- misc util
 
-hc3  = hcat' with {sep=3}
-vc3  = vcat' with {sep=3}
+hc3  = hcat' (with & sep .~ 3)
+vc3  = vcat' (with & sep .~ 3)
 vc3r = vc3 . map alignR
 p1 = pad 1.1 . centerXY
