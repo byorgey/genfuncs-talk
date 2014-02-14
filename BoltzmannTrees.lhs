@@ -1,14 +1,15 @@
 Today I’d like to talk about generating random trees. First, some imports and such (this post is literate Haskell).
 
 > {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+> {-# LANGUAGE PackageImports #-}
 >
 > module BoltzmannTrees where
 >
 > import           Control.Applicative
 > import           Control.Lens                   ((??))
 > import           Control.Monad.Random
-> import           Control.Monad.Reader
-> import           Control.Monad.State
+> import "mtl"     Control.Monad.Reader
+> import "mtl"     Control.Monad.State
 > import           Control.Monad.Trans.Maybe
 > import           Diagrams.TwoD.Layout.Tree
 

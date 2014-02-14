@@ -88,7 +88,7 @@
 \renewcommand{\emph}{\textbf}
 
 \title{Trees and Things \\ (with Semirings!)}
-\date{Houghton College \\ October 29, 2013}
+\date{Williams College \\ February 26, 2014}
 \author{Brent Yorgey}
 \titlegraphic{}  % \includegraphics[width=2in]{foo}
 
@@ -99,12 +99,6 @@
 \begin{frame}[fragile]
    \titlepage
 %   \hfill \includegraphics[width=0.5in]{plclub}
-\end{frame}
-
-\title{Trees and Things \\ \sout{(with Semirings!)}}
-
-\begin{frame}[fragile]
-  \titlepage
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -191,7 +185,7 @@ OR
     \begin{diagram}[width=300]
       import Structures
       import Data.List.Split
-      dia = (vcat' with {sep = 6} . map (centerX . hcat' with {sep=6}) . chunksOf 6 . map binTree . take 12 . concat $ allBinTrees)
+      dia = (vcat' (with & sep .~ 6) . map (centerX . hcat' (with & sep.~6)) . chunksOf 6 . map binTree . take 12 . concat $ allBinTrees)
           # p1
     \end{diagram}
     %$
@@ -226,7 +220,7 @@ dia = (binTree . toBTree $ bigTree)   -- $
 import Structures
 import Control.Lens ((&), (.~))
 
-dia = hcat' with {sep = 3} [bucketed allBinTreesD, text' 7 "?"]
+dia = hcat' (with & sep .~ 3) [bucketed allBinTreesD, text' 7 "?"]
     # p1
 \end{diagram}
 \end{center}
@@ -279,7 +273,7 @@ import Structures
 import Control.Lens ((&), (.~))
 
 dia =
-  (vcat' with {sep = 5} . map (hcat' with {sep = 3}))
+  (vcat' (with & sep .~ 5) . map (hcat' (with & sep .~ 3)))
   [ [text' 5 "T", bucketed' (with & showIndices .~ False) allBinTreesD]
   , [text' 5 "F", drawSpecies' (with & showIndices .~ False) speciesA]
   , [text' 5 "G", drawSpecies speciesB]
@@ -371,7 +365,7 @@ dia =
 
       pp = pair dot (pair (binTree treeA) (binTree treeB))
 
-      dia = hcat' with {sep = 10}
+      dia = hcat' (with & sep .~ 10)
         [ pp
         , text' 6 "≅"
         , binTree (BNode () treeA treeB) # centerY
@@ -386,9 +380,9 @@ dia =
     \begin{diagram}[width=200]
       import Structures
 
-      dia = (hcat' with {sep=1} . map alignB)
+      dia = (hcat' (with & sep.~1) . map alignB)
         [ drawBucket with (speciesA !! 3)
-        , vcat' with {sep=1}
+        , vcat' (with & sep.~1)
           [ drawBucket with (speciesB !! 2)
           , drawBucket with ((speciesA !! 3) %* (speciesB !! 2))
           ]

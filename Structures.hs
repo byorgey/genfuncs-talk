@@ -36,11 +36,19 @@ maximum0 :: (Num c, Ord c) => [c] -> c
 maximum0 = maximum . (0:)
 
 highlight :: (Monoid c, HasStyle c) => c
-highlight = lc houghtonPurple . lw 0.5 $ mempty
+highlight = lc schoolDark . lw 0.5 $ mempty
 
 houghtonPurple, houghtonGold :: Colour Double
 houghtonPurple = sRGB24 0x2c 0x2a 0x6e
 houghtonGold   = sRGB24 0xca 0xb7 0x78
+
+williamsPurple, williamsGold :: Colour Double
+williamsPurple = purple
+williamsGold   = gold
+
+schoolDark, schoolLight :: Colour Double
+schoolDark  = williamsPurple
+schoolLight = williamsGold
 
 --------------------------------------------------
 -- Types
@@ -65,7 +73,7 @@ nil :: Dia
 nil = square 1.5 # fc white
 
 dot :: Dia
-dot = circle 1 # fc houghtonPurple # lw 0
+dot = circle 1 # fc schoolDark # lw 0
 
 list :: Int -> Dia
 list 0 = nil
@@ -445,8 +453,8 @@ mkSpecies :: Colour Double -> [Int] -> Species
 mkSpecies c = zipWith (\i n -> Bucket [SAtom (Atom i var c) | var <- [0..(n-1)]]) [0..]
 
 speciesA, speciesB, speciesOne, speciesX :: Species
-speciesA = mkSpecies houghtonGold [1,1,1,3,4,2]
-speciesB = mkSpecies houghtonPurple [1,1,2,0,3,1]
+speciesA = mkSpecies schoolLight [1,1,1,3,4,2]
+speciesB = mkSpecies schoolDark [1,1,2,0,3,1]
 speciesOne = Bucket [SDia (square 1 # fc black)] : repeat zero
 speciesX =  zero : Bucket [SDia dot] : repeat zero
 

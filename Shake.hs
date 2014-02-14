@@ -8,7 +8,7 @@ bibtex   = "bibtex"
 
 main = shake shakeOptions $ do
 
-    want ["13-10-29-houghton-genfuncs.pdf"]
+    want ["genfuncs-jobtalk.pdf"]
 
     "*.tex" *> \output -> do
         let input = replaceExtension output "lhs"
