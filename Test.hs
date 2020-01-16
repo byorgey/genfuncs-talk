@@ -1,10 +1,10 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections             #-}
 
-import Diagrams.Prelude
-import Diagrams.Backend.Postscript.CmdLine
-import Structures
-import Control.Lens ((&), (.~), (^.))
+import           Control.Lens                 ((&), (.~), (^.))
+import           Diagrams.Backend.PGF.CmdLine
+import           Diagrams.Prelude
+import           Structures
 
 dia = prodSum' (with & showX .~ True) 3 gf1 gf2
 

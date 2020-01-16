@@ -5,7 +5,7 @@
 %include lhs2TeX-extra.fmt
 
 \usepackage{brent}
-\usepackage[backend=ps,extension=eps,outputdir=diagrams]{diagrams-latex}
+\usepackage[backend=pgf,outputdir=diagrams]{diagrams-latex}
 \graphicspath{{images/}}
 \usepackage{ulem}
 

@@ -10,13 +10,13 @@ main = shake shakeOptions $ do
 
     want ["genfuncs-jobtalk.pdf"]
 
-    "*.tex" *> \output -> do
+    "*.tex" %> \output -> do
         let input = replaceExtension output "lhs"
         need [input, "Structures.hs"]
-        system' lhs2TeX $ ["--poly", "-o", output] ++ [input]
+        command_ [] lhs2TeX $ ["--poly", "-o", output] ++ [input]
 
-    "*.pdf" *> \output -> do
+    "*.pdf" %> \output -> do
         let input = replaceExtension output "tex"
         need [input, "Diagrams.hs"]
-        system' pdflatex $ ["--enable-write18", input]
+        command_ [] pdflatex ["--enable-write18", input]
 --        system' pdflatex $ ["--enable-write18", input]

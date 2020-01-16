@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
@@ -9,22 +10,23 @@ module Structures where
 -- import Debug.Trace
 
 import           Data.Colour.SRGB
-import           Diagrams.Backend.Postscript
-import           Diagrams.Prelude            hiding (trace)
+import           Diagrams.Backend.PGF
+import           Diagrams.Prelude          hiding (Empty, dot, highlight, trace,
+                                            zero)
 import           Diagrams.TwoD.Layout.Tree
 import           Graphics.SVGFonts
 
-import           Control.Applicative         ((<|>))
-import           Control.Arrow               (second)
-import           Control.Lens                (makeLenses, (^.))
+import           Control.Applicative       ((<|>))
+import           Control.Arrow             (second)
+import           Control.Lens              (makeLenses, (^.))
 import           Data.Default.Class
-import           Data.List                   (foldl', genericLength, inits,
-                                              mapAccumL, nub)
-import qualified Data.Map                    as M
+import           Data.List                 (foldl', genericLength, inits,
+                                            mapAccumL, nub)
+import qualified Data.Map                  as M
 import           Data.Tree
 import           Physics.ForceLayout
-import           Text.Parsec                 (between, char, many, runParser)
-import           Text.Parsec.String          (Parser)
+import           Text.Parsec               (between, char, many, runParser)
+import           Text.Parsec.String        (Parser)
 
 ------------------------------------------------------------
 -- misc
@@ -53,7 +55,7 @@ schoolLight = williamsGold
 --------------------------------------------------
 -- Types
 
-type Dia = Diagram Postscript R2
+type Dia = Diagram B
 
 data Atom = Atom { structShape :: Int, structVariant :: Int, structColor :: Colour Double }
 data Struct = SDia Dia
@@ -82,7 +84,7 @@ list n = dots <> rule
     dots = hcat' (with & sep .~ 2) (replicate n dot ++ [nil])
     rule = hrule (width dots) # translateXTo dots
 
-translateXTo :: (Transformable b, Alignable b, HasOrigin b, Enveloped a, V a ~ R2, V b ~ R2) => a -> b -> b
+translateXTo :: (Transformable b, Alignable b, HasOrigin b, Enveloped a, V a ~ V2, V b ~ V2) => a -> b -> b
 translateXTo ref mv = alignL mv # maybe id translateX (fst <$> extentX ref)
 
 tree :: Tree () -> Dia
@@ -101,12 +103,12 @@ bTreeParser = char '(' *>
 
 parseTree :: String -> Tree ()
 parseTree s = case runParser treeParser () "" s of
-                Left _ -> error "parse error"
+                Left _  -> error "parse error"
                 Right t -> t
 
 parseBTree :: String -> BTree ()
 parseBTree s = case runParser bTreeParser () "" s of
-                 Left _ -> error "parse error"
+                 Left _  -> error "parse error"
                  Right t -> t
 
 graph :: [(Int,Int)] -> Dia
@@ -117,17 +119,17 @@ graph es = drawEnsemble es $
                        )
            ens
   where
-    ens :: Ensemble R2
+    ens :: Ensemble V2 Double
     ens = Ensemble [ (es,  hookeForce 0.05 4)
                    , (allPairs, coulombForce 1)
                    ]
                    particleMap
     vs = nub (map fst es ++ map snd es)
     allPairs = [(x,y) | x <- vs, y <- vs, x < y ]
-    particleMap :: M.Map Int (Particle R2)
+    particleMap :: M.Map Int (Particle V2 Double)
     particleMap = M.fromList $ zip vs (map initParticle (regPoly (length vs) 4))
 
-drawEnsemble :: [(Int,Int)] -> Ensemble R2 -> Dia
+drawEnsemble :: [(Int,Int)] -> Ensemble V2 Double -> Dia
 drawEnsemble es = applyAll (map drawEdge es) . mconcat . map drawPt . (map . second) (^.pos) . M.assocs . (^.particles)
   where
     drawPt (pid, p) = dot # named pid # moveTo p
@@ -216,8 +218,8 @@ data BucketOpts
   , _expandBuckets   :: Bool
   , _shrinkFactor    :: Maybe Double
   , _padding         :: Maybe Double
-  , _bucketDir       :: R2
-  , _bucketOptsStyle :: Style R2
+  , _bucketDir       :: V2 Double
+  , _bucketOptsStyle :: Style V2 Double
   , _showX           :: Bool
   }
 
@@ -253,9 +255,6 @@ bucketed' opts buckets
 padBucket :: BucketOpts -> [Dia] -> [Dia]
 padBucket opts = maybe id (\p -> (map (pad p . centerXY))) (opts ^. padding)
 
-perp :: R2 -> R2
-perp = rotateBy (-1/4)
-
 makeBucket :: BucketOpts -> Int -> [Dia] -> Dia
 makeBucket opts n elts
     = (if (opts ^. showIndices) then (\d -> cat' iDir (with & sep.~opts ^. bucketSep) [d,text' 5 (show n)]) else id)
@@ -265,7 +264,7 @@ makeBucket opts n elts
     bucketDia = roundedRect s s (s / 8)
       # applyStyle (opts ^. bucketOptsStyle)
     s = opts ^. bucketSize
-    iDir = (if opts^.flipIndices then negateV else id) . perp $ opts^.bucketDir
+    iDir = (if opts^.flipIndices then negated else id) . perp $ opts^.bucketDir
 
 wrapLayout :: Maybe Double -> Double -> Double -> [Dia] -> Dia
 wrapLayout Nothing w h = layoutGrid w h . wrap w
@@ -297,11 +296,11 @@ wrap' w es = map snd this : wrap' w (map snd rest)
 layoutGrid :: Double -> Double -> [[Dia]] -> Dia
 layoutGrid w h es = centerY . spread unit_Y h $ map (centerX . spread unitX w) es
   where
-    spread :: R2 -> Double -> [Dia] -> Dia
+    spread :: V2 Double -> Double -> [Dia] -> Dia
     spread v total ds = cat' v (with & sep .~ (total - sum (map (extent v) ds)) / (genericLength ds + 1)) ds
     extent v d
       = maybe 0 (negate . uncurry (-))
-      $ (\f -> (-f (negateV v), f v)) <$> (appEnvelope . getEnvelope $ d)
+      $ (\f -> (-f (negated v), f v)) <$> (appEnvelope . getEnvelope $ d)
 
 bucketed :: [[Dia]] -> Dia
 bucketed = bucketed' def
@@ -314,13 +313,13 @@ class IsBucket a where
 instance IsBucket Bucket where
   drawBucket opts (Bucket b) = makeBucket (opts & showIndices .~ False) 0 (padBucket opts $ map (drawStruct opts) b)
 
-instance IsBucket Dia where
+instance IsBucket (QDiagram B v n m) where
   drawBucket _ d = d
 
 instance IsBucket a => IsBucket (Maybe a) where
   drawBucket opts = maybe (strutX (opts^.bucketSize) <> strutY (opts^.bucketSize)) (drawBucket opts)
 
-instance IsBucket a => IsBucket (a, Style R2) where
+instance IsBucket a => IsBucket (a, Style V2 Double) where
   drawBucket opts (b,sty) = drawBucket opts b # applyStyle sty
 
 drawGrid :: IsBucket a => BucketOpts -> Grid a -> Dia
@@ -346,10 +345,10 @@ drawGrid opts (Grid col row bs) =
     hor = hcat' (with & sep .~ opts ^. bucketSep) . map alignB
     ver = vcat' (with & sep .~ opts ^. bucketSep) . map alignR
 
-productGrid :: Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style R2)) -> Dia
+productGrid :: Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style V2 Double)) -> Dia
 productGrid = productGrid' with
 
-productGrid' :: BucketOpts -> Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style R2)) -> Dia
+productGrid' :: BucketOpts -> Species -> Species -> (((Int,Int),Bucket) -> Maybe (Bucket, Style V2 Double)) -> Dia
 productGrid' opts s1 s2 f = drawGrid opts (Grid s1 s2 grid)
   where
     grid = [ [ f ((r,c), (s1 !! r) %* (s2 !! c))
@@ -422,13 +421,13 @@ theCycles = hcat' (with & sep .~ 2) [cyc 5, cyc 7] # centerXY # rotateBy (1/20)
 
 ------------------------------------------------------------
 
-shape :: Int -> Located (Trail' Loop R2)
+shape :: Int -> Located (Trail' Loop V2 Double)
 shape 0 = square 1.5
 shape 1 = circle 1
 shape 2 = rect 4 2
 shape n = polygon (with & polyType .~ PolyRegular n 2)
 
-variant :: Int -> Located (Trail' Loop R2) -> Dia
+variant :: Int -> Located (Trail' Loop V2 Double) -> Dia
 variant 0 = strokeLocLoop
 variant 1 = fc white . strokeLocLoop
 variant 2 = \t -> strokeLocLoop t # scale 0.5 <> strokeLocLoop t # fc white
